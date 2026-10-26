@@ -1,0 +1,2935 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>유안메디(UAN MEDI) 통합 근태·인사 포털 (실시간 배포용)</title>
+  <!-- Firebase Realtime Database SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      word-break: keep-all;
+    }
+    table th, table td {
+      white-space: nowrap !important;
+      word-break: keep-all !important;
+    }
+    .allow-wrap { white-space: normal !important; }
+    .custom-scrollbar::-webkit-scrollbar { height: 8px; width: 8px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    .sticky-col-1 { position: sticky; left: 0; z-index: 10; background: inherit; }
+    .sticky-col-2 { position: sticky; left: 82px; z-index: 10; background: inherit; }
+    .sticky-col-3 { position: sticky; left: 175px; z-index: 10; background: inherit; }
+    tr.dragging { opacity: 0.5; background-color: #dbeafe !important; }
+    tr.drag-over { border-top: 2px solid #2563eb !important; }
+    #leftSidebar { transition: width 0.22s ease, transform 0.22s ease; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Top Header -->
+  <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-30">
+    <div class="max-w-[1800px] mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <button onclick="toggleLeftSidebar()" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center text-white transition" title="좌측 메뉴 열기/접기">
+          <i class="fa-solid fa-bars text-base" id="sidebarToggleIcon"></i>
+        </button>
+        <!-- 유안메디 공식 CI 로고 (벡터 내장 - 용량 최적화 및 선명도 유지) -->
+        <div class="px-2.5 h-11 rounded-xl bg-white flex flex-col items-center justify-center shadow-md border border-slate-200/80 shrink-0 leading-none select-none">
+          <svg viewBox="0 0 120 55" class="h-6 w-auto">
+            <polygon points="12,5 30,5 42,32 24,32" fill="#0038c7"/>
+            <polygon points="55,5 73,5 48,52 30,52" fill="#0038c7"/>
+            <polygon points="82,5 100,5 75,52 57,52" fill="#0038c7"/>
+            <polygon points="86,25 104,25 114,52 96,52" fill="#0038c7"/>
+          </svg>
+          <span class="text-[9px] font-extrabold tracking-tighter text-[#0038c7] mt-0.5">유안메디</span>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold tracking-tight">유안메디 통합 근태·인사 포털</h1>
+            <span id="cloudStatusBadge" class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-medium">실시간 연동중</span>
+          </div>
+          <p class="text-xs text-slate-400 hidden sm:block">개인 계정 로그인 · 지정 관리자 권한 · 다중 연차신청 · 휴가구분 커스텀</p>
+        </div>
+      </div>
+
+      <!-- Right Controls: Logged-in User Info & Logout / My PIN Change -->
+      <div class="flex items-center gap-2.5 flex-wrap">
+        <div id="headerUserBadge" class="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700 text-xs">
+          <span class="text-slate-400">로그인 대기중...</span>
+        </div>
+
+        <button onclick="openMyPinChangeModal()" class="px-2.5 py-1.5 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition whitespace-nowrap" title="내 로그인 비밀번호(PIN) 변경">
+          <i class="fa-solid fa-key mr-1 text-blue-400"></i>내 비번변경
+        </button>
+
+        <button onclick="logoutAndOpenLoginModal()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow transition whitespace-nowrap">
+          <i class="fa-solid fa-right-from-bracket mr-1"></i>계정전환 / 로그아웃
+        </button>
+      </div>
+    </div>
+
+    <!-- 접속자 내 정보 명확 표기 배너 -->
+    <div class="bg-gradient-to-r from-slate-800 via-slate-800 to-blue-950 border-t border-slate-700/80">
+      <div class="max-w-[1800px] mx-auto px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div class="flex items-center gap-3 flex-wrap" id="myInfoBannerContent"></div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[11px]"></i>
+            <input type="text" id="globalEmpSearch" oninput="handleGlobalSearch()" placeholder="이름·부서·사번 빠른 검색..." class="pl-7 pr-6 py-1 rounded-lg bg-slate-900/90 text-white border border-slate-600 text-xs w-48 focus:outline-none focus:border-blue-400" />
+            <button id="clearSearchBtn" onclick="clearGlobalSearch()" class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+              <i class="fa-solid fa-circle-xmark"></i>
+            </button>
+          </div>
+          <button id="onlyMeToggleBtn" onclick="toggleOnlyMeFilter()" class="px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold border border-slate-600 transition flex items-center gap-1 whitespace-nowrap">
+            <i class="fa-solid fa-user-tag text-blue-400"></i><span id="onlyMeBtnText">내 정보만 보기 OFF</span>
+          </button>
+          <button onclick="openEmpHistoryModal(state.currentUser)" class="px-2.5 py-1 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 border border-blue-400/30 font-semibold transition whitespace-nowrap">
+            <i class="fa-solid fa-clock-rotate-left mr-1"></i>내 사용이력
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Body Wrapper -->
+  <div class="flex-1 flex max-w-[1800px] w-full mx-auto relative">
+
+    <!-- 좌측 탭 사이드바 -->
+    <aside id="leftSidebar" class="w-64 bg-slate-900 text-slate-200 shrink-0 border-r border-slate-800 flex flex-col justify-between min-h-[calc(100vh-110px)] select-none">
+      <div class="p-3 space-y-1">
+        <div class="px-3 py-2 flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+          <span>메뉴 네비게이션</span>
+          <button onclick="toggleLeftSidebar()" class="text-slate-400 hover:text-white text-xs" title="사이드바 접기">
+            <i class="fa-solid fa-angles-left"></i> 접기
+          </button>
+        </div>
+
+        <button onclick="switchTab('calendar')" id="tab-calendar" class="nav-tab w-full px-3.5 py-3 rounded-xl text-sm font-bold bg-blue-600 text-white flex items-center justify-between transition">
+          <span class="flex items-center gap-2.5"><i class="fa-regular fa-calendar-check w-4 text-center"></i>월간 근태 캘린더</span>
+          <span class="text-[10px] px-1.5 py-0.5 bg-black/20 rounded">전체</span>
+        </button>
+
+        <button onclick="switchTab('dashboard')" id="tab-dashboard" class="nav-tab w-full px-3.5 py-3 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white flex items-center justify-between transition">
+          <span class="flex items-center gap-2.5"><i class="fa-solid fa-chart-pie w-4 text-center text-emerald-400"></i>연차 통합 대시보드</span>
+          <span class="text-[10px] px-1.5 py-0.5 bg-slate-800 text-slate-400 rounded">전체</span>
+        </button>
+
+        <button onclick="switchTab('request')" id="tab-request" class="nav-tab w-full px-3.5 py-3 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white flex items-center justify-between transition">
+          <span class="flex items-center gap-2.5"><i class="fa-regular fa-paper-plane w-4 text-center text-amber-400"></i>연차 신청 · 결재현황</span>
+          <span id="pendingBadge" class="hidden px-2 py-0.5 text-[11px] rounded-full bg-amber-500 text-slate-950 font-extrabold">0</span>
+        </button>
+
+        <button onclick="switchTab('welfare')" id="tab-welfare" class="nav-tab w-full px-3.5 py-3 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white flex items-center justify-between transition">
+          <span class="flex items-center gap-2.5"><i class="fa-solid fa-gift w-4 text-center text-pink-400"></i>사내 복지 · 생일</span>
+        </button>
+
+        <button onclick="switchTab('contacts')" id="tab-contacts" class="nav-tab w-full px-3.5 py-3 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white flex items-center justify-between transition">
+          <span class="flex items-center gap-2.5"><i class="fa-regular fa-address-book w-4 text-center text-cyan-400"></i>임직원 비상연락망</span>
+        </button>
+
+        <!-- Admin Only Section -->
+        <div id="adminSidebarSection" class="pt-4 mt-4 border-t border-slate-800 space-y-1 hidden">
+          <div class="px-3 py-1.5 text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+            <i class="fa-solid fa-crown"></i>지정 관리자 전용 메뉴
+          </div>
+          <button onclick="switchTab('labor')" id="tab-labor" class="nav-tab w-full px-3.5 py-3 rounded-xl text-sm font-medium text-amber-200 hover:bg-amber-500/20 flex items-center justify-between transition">
+            <span class="flex items-center gap-2.5"><i class="fa-solid fa-file-invoice w-4 text-center text-amber-400"></i>노무법인 월별제출</span>
+            <span class="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-300 rounded">관리자</span>
+          </button>
+          <button onclick="switchTab('adminEmp')" id="tab-adminEmp" class="nav-tab w-full px-3.5 py-3 rounded-xl text-sm font-medium text-amber-200 hover:bg-amber-500/20 flex items-center justify-between transition">
+            <span class="flex items-center gap-2.5"><i class="fa-solid fa-users-gear w-4 text-center text-amber-400"></i>기초데이터 · 관리자선정</span>
+            <span class="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-300 rounded">관리자</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-4 m-3 rounded-xl bg-slate-800/90 border border-slate-700/80 text-xs space-y-2">
+        <div class="font-bold text-slate-200 flex items-center justify-between">
+          <span>접속 계정 권한</span>
+          <span id="sidebarRoleBadge"></span>
+        </div>
+        <p class="text-[11px] text-slate-400 leading-relaxed" id="sidebarRoleDesc"></p>
+      </div>
+    </aside>
+
+    <!-- Floating Re-open Sidebar Button -->
+    <button id="reopenSidebarBtn" onclick="toggleLeftSidebar()" class="hidden fixed left-0 top-36 z-30 bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-3 rounded-r-xl shadow-lg text-xs font-bold flex items-center gap-1.5">
+      <i class="fa-solid fa-angles-right"></i><span>메뉴열기</span>
+    </button>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 min-w-0 px-4 sm:px-6 py-6 space-y-6">
+
+      <!-- 1. 월간 근태 캘린더 -->
+      <section id="view-calendar" class="space-y-5">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+          <div class="lg:col-span-5 bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-xs font-semibold text-blue-600 uppercase tracking-wider">조회 연월 설정 (2024~2035년 지원)</span>
+                <h2 class="text-lg font-bold text-slate-800 mt-0.5">전 직원 월간 근태 캘린더</h2>
+              </div>
+              <span class="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-medium">
+                <i class="fa-solid fa-eye mr-1"></i>읽기 전용
+              </span>
+            </div>
+            <div class="flex items-center gap-2 mt-3 flex-wrap">
+              <button onclick="changeCalendarMonth(-1)" class="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+              <select id="calYear" onchange="syncYearMonthFromCalendar()" class="px-3 py-2 rounded-lg border border-slate-300 font-bold text-slate-800 bg-white"></select>
+              <select id="calMonth" onchange="syncYearMonthFromCalendar()" class="px-3 py-2 rounded-lg border border-slate-300 font-bold text-slate-800 bg-white">
+                <option value="1">1월</option><option value="2">2월</option><option value="3">3월</option>
+                <option value="4">4월</option><option value="5">5월</option><option value="6">6월</option>
+                <option value="7">7월</option><option value="8">8월</option><option value="9">9월</option>
+                <option value="10" selected>10월</option><option value="11">11월</option><option value="12">12월</option>
+              </select>
+              <button onclick="changeCalendarMonth(1)" class="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600">
+                <i class="fa-solid fa-chevron-right"></i>
+              </button>
+              <button onclick="switchTab('request')" class="ml-auto px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition">
+                <i class="fa-regular fa-calendar-plus mr-1"></i>휴가 신청하기
+              </button>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-2" id="calRefExplain"></p>
+          </div>
+
+          <div class="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+              <div class="text-xs text-slate-500 font-medium">오늘 날짜</div>
+              <div class="text-base font-bold text-slate-800 mt-1" id="kpiTodayDate">2026-10-21 (수)</div>
+              <div class="text-xs text-emerald-600 mt-2 font-medium" id="kpiActiveCount">재직 인원 13명</div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+              <div class="text-xs text-slate-500 font-medium">이달 연차 초기갱신(N주년)</div>
+              <div class="text-xl font-bold text-emerald-600 mt-1" id="kpiAnnivCount">0명</div>
+              <div class="text-xs text-slate-500 mt-1 truncate" id="kpiAnnivNames">-</div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+              <div class="text-xs text-slate-500 font-medium">당월 누적 휴가 사용</div>
+              <div class="text-2xl font-bold text-indigo-600 mt-1" id="kpiMonthTotalDays">0일</div>
+              <div class="text-xs text-slate-500 mt-1" id="kpiMonthTotalCases">총 0건 승인됨</div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+              <div class="text-xs text-slate-500 font-medium">이달의 법정공휴일/기념일</div>
+              <div class="text-lg font-bold text-rose-600 mt-1" id="kpiMonthHolidaysCount">0일</div>
+              <div class="text-xs text-rose-500 mt-1 truncate" id="kpiMonthHolidaysList">-</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white px-4 py-3 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div class="flex items-center gap-2.5 flex-wrap">
+            <span class="font-bold text-slate-700"><i class="fa-solid fa-arrow-down-a-z mr-1 text-blue-600"></i>정렬 및 위치변경:</span>
+            <button onclick="sortEmployees('id')" class="px-2.5 py-1 rounded bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-700 font-semibold transition">사번순 정렬</button>
+            <button onclick="sortEmployees('joinDate')" class="px-2.5 py-1 rounded bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-700 font-semibold transition">입사일순</button>
+            <button onclick="sortEmployees('dept')" class="px-2.5 py-1 rounded bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-700 font-semibold transition">부서순</button>
+            <button onclick="sortEmployees('name')" class="px-2.5 py-1 rounded bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-700 font-semibold transition">이름순</button>
+            <span class="text-[11px] text-slate-400">※ 각 행 좌측 ▲/▼ 버튼으로 원하는 위치로 자유 이동 가능</span>
+          </div>
+          <div class="flex items-center gap-3 flex-wrap" id="calendarLegendContainer"></div>
+        </div>
+
+        <div id="calendarHolidayBadges" class="flex items-center gap-2 flex-wrap text-xs"></div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-xs border-collapse" id="matrixCalendarTable">
+              <thead id="matrixCalendarHead" class="bg-slate-800 text-white"></thead>
+              <tbody id="matrixCalendarBody" class="divide-y divide-slate-200"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. 연차 통합 대시보드 -->
+      <section id="view-dashboard" class="hidden space-y-5">
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <span class="text-xs font-semibold text-emerald-600 uppercase tracking-wider">매년 입사기념일(N주년) 기준 연차 자동 초기화 반영</span>
+            <h2 class="text-lg font-bold text-slate-800 mt-0.5">전 직원 연차 통합 대시보드</h2>
+            <p class="text-xs text-slate-500 mt-1">1년 이상 재직자는 매년 입사기념일마다 이전 주기 사용분이 초기화되고 해당 주기의 신규 연차(15일+근속가산)가 새로 부여됩니다.</p>
+          </div>
+          <div class="flex items-center gap-3 flex-wrap">
+            <div class="flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-xs">
+              <span class="font-semibold text-slate-600">빠른 월 선택:</span>
+              <select id="dashQuickYear" onchange="applyDashQuickMonth()" class="bg-white px-2 py-1 rounded border border-slate-300 font-bold"></select>
+              <select id="dashQuickMonth" onchange="applyDashQuickMonth()" class="bg-white px-2 py-1 rounded border border-slate-300 font-bold">
+                <option value="1">1월 말</option><option value="2">2월 말</option><option value="3">3월 말</option>
+                <option value="4">4월 말</option><option value="5">5월 말</option><option value="6">6월 말</option>
+                <option value="7">7월 말</option><option value="8">8월 말</option><option value="9">9월 말</option>
+                <option value="10" selected>10월 말</option><option value="11">11월 말</option><option value="12">12월 말</option>
+              </select>
+            </div>
+
+            <div class="flex items-center gap-1.5 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 text-xs">
+              <span class="text-blue-700 font-semibold">산정 기준일:</span>
+              <input type="date" id="dashRefDateInput" value="2026-10-31" onchange="renderDashboardView()" class="bg-white px-2 py-1 rounded border border-blue-300 font-bold text-blue-800" />
+            </div>
+
+            <label class="inline-flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer bg-slate-100 px-2.5 py-2 rounded-lg">
+              <input type="checkbox" id="showExemptToggle" onchange="renderDashboardView()" class="rounded text-blue-600" />
+              <span>연차제외자(임원/약사) 표시</span>
+            </label>
+
+            <label class="inline-flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer bg-slate-100 px-2.5 py-2 rounded-lg">
+              <input type="checkbox" id="showResignedToggle" onchange="renderDashboardView()" class="rounded text-blue-600" />
+              <span>퇴사자 표시</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="bg-white px-4 py-2.5 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="font-bold text-slate-700">목록 정렬:</span>
+            <button onclick="sortEmployees('id')" class="px-2.5 py-1 rounded bg-slate-100 hover:bg-blue-100 font-semibold">사번순 정렬</button>
+            <button onclick="sortEmployees('joinDate')" class="px-2.5 py-1 rounded bg-slate-100 hover:bg-blue-100 font-semibold">입사일순</button>
+            <button onclick="sortEmployees('dept')" class="px-2.5 py-1 rounded bg-slate-100 hover:bg-blue-100 font-semibold">부서순</button>
+            <button onclick="sortEmployees('name')" class="px-2.5 py-1 rounded bg-slate-100 hover:bg-blue-100 font-semibold">이름순</button>
+          </div>
+          <span class="text-slate-400">💡 행 왼쪽의 <strong>▲ / ▼</strong> 버튼 또는 <strong>드래그(☰)</strong>로 직원 순서를 자유롭게 변경할 수 있습니다.</span>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-xs sm:text-sm text-left border-collapse">
+              <thead class="bg-slate-800 text-white text-xs uppercase">
+                <tr>
+                  <th class="py-3 px-3 text-center">위치</th>
+                  <th class="py-3 px-3">사번</th>
+                  <th class="py-3 px-4">성함</th>
+                  <th class="py-3 px-4">부서</th>
+                  <th class="py-3 px-3">직함</th>
+                  <th class="py-3 px-4">입사일자</th>
+                  <th class="py-3 px-3 text-center">현재 연차주기</th>
+                  <th class="py-3 px-4">근속기간</th>
+                  <th class="py-3 px-3 text-right">1년미만 발생/잔여</th>
+                  <th class="py-3 px-3 text-right">이번주기 발생</th>
+                  <th class="py-3 px-3 text-right">이번주기 사용</th>
+                  <th class="py-3 px-4 text-right bg-blue-900">현재 유효 잔여연차</th>
+                  <th class="py-3 px-3 text-center">상태</th>
+                  <th class="py-3 px-3 text-center">상세내역</th>
+                </tr>
+              </thead>
+              <tbody id="dashboardTableBody" class="divide-y divide-slate-200"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. 연차 신청 및 전자결재 -->
+      <section id="view-request" class="hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-5 bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
+            <div class="border-b border-slate-100 pb-3 flex items-center justify-between">
+              <div>
+                <span class="text-xs font-semibold text-amber-600 uppercase">Step 1. 휴가 신청서 작성 (다중 날짜 선택 가능)</span>
+                <h3 class="text-base font-bold text-slate-800 mt-0.5">달력에서 신청할 날짜들을 클릭하세요 (중복선택 가능)</h3>
+              </div>
+              <div class="text-right">
+                <span class="text-xs text-slate-400">나의 유효 잔여연차</span>
+                <div class="text-lg font-bold text-blue-600" id="reqMyRemainDays">- 일</div>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+              <div class="flex items-center justify-between mb-2">
+                <button type="button" onclick="changeMiniCal(-1)" class="p-1.5 hover:bg-slate-200 rounded text-slate-600"><i class="fa-solid fa-chevron-left text-xs"></i></button>
+                <div class="text-sm font-bold text-slate-800" id="miniCalTitle">2026년 10월</div>
+                <button type="button" onclick="changeMiniCal(1)" class="p-1.5 hover:bg-slate-200 rounded text-slate-600"><i class="fa-solid fa-chevron-right text-xs"></i></button>
+              </div>
+              <div class="grid grid-cols-7 text-center text-[11px] font-semibold text-slate-500 mb-1">
+                <div class="text-rose-500">일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div class="text-blue-500">토</div>
+              </div>
+              <div id="miniCalGrid" class="grid grid-cols-7 gap-1 text-center text-xs"></div>
+              <div class="mt-2.5 pt-2 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
+                <span>💡 날짜를 여러 개 클릭하면 중복 선택/해제됩니다.</span>
+                <button type="button" onclick="clearSelectedDates()" class="text-rose-600 hover:underline font-semibold">전체 선택해제</button>
+              </div>
+            </div>
+
+            <form onsubmit="submitLeaveRequest(event)" class="space-y-3 text-xs sm:text-sm">
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="block text-xs font-semibold text-slate-600">신청자 (접속 계정)</label>
+                    <span id="reqApplicantLockLabel" class="text-[10px] text-blue-600 font-semibold">본인 고정</span>
+                  </div>
+                  <select id="reqEmpName" onchange="updateReqMyRemain()" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-100 font-bold text-slate-800"></select>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-1">날짜 직접 추가</label>
+                  <div class="flex gap-1">
+                    <input type="date" id="reqDirectDateInput" value="2026-10-22" class="flex-1 px-2.5 py-2 rounded-lg border border-slate-300 font-mono text-xs" />
+                    <button type="button" onclick="addDirectDateToSelection()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold whitespace-nowrap">+추가</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="p-3 rounded-xl bg-blue-50/70 border border-blue-200">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="text-xs font-bold text-blue-900">선택된 신청 일자 (<span id="selectedDateCount">1</span>일)</span>
+                  <span class="text-[11px] text-blue-700 font-semibold" id="totalDeductionSummary">총 1.0일 차감 예정</span>
+                </div>
+                <div id="selectedDatesChipContainer" class="flex flex-wrap gap-1.5"></div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="block text-xs font-semibold text-slate-600">휴가 구분</label>
+                    <button type="button" onclick="openLeaveTypeModal()" class="text-[11px] font-bold text-blue-600 hover:text-blue-800 underline">
+                      + 휴가 구분 추가/관리
+                    </button>
+                  </div>
+                  <select id="reqType" onchange="updateReqDeduction()" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white font-semibold text-slate-800"></select>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-1">1일당 차감 / 총 차감일수</label>
+                  <input type="text" id="reqDays" readonly value="1.0일 (총 1.0일)" class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-100 font-bold text-blue-600" />
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">사유 / 비고 (인수인계 등)</label>
+                <input type="text" id="reqReason" placeholder="예: 개인 사유, 병원 진료, 생일 반차 등" class="w-full px-3 py-2 rounded-lg border border-slate-300" />
+              </div>
+
+              <div class="pt-2">
+                <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow transition flex items-center justify-center gap-2">
+                  <i class="fa-regular fa-paper-plane"></i>선택한 날짜 휴가 결재 상신하기
+                </button>
+                <p class="text-[11px] text-slate-400 mt-1.5 text-center">※ 상신 후 지정 관리자(팀장/임원) 승인이 완료되면 전 직원 화면에 실시간 반영됩니다.</p>
+              </div>
+            </form>
+          </div>
+
+          <div class="lg:col-span-7 space-y-5">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <div>
+                  <span class="text-xs font-semibold text-amber-600 uppercase">Step 2. 결재 대기 목록</span>
+                  <h3 class="text-base font-bold text-slate-800">승인 대기 중인 휴가 신청건</h3>
+                </div>
+                <span id="adminApproveHint" class="text-xs px-2.5 py-1 rounded bg-slate-100 text-slate-600"></span>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-xs text-left border-collapse">
+                  <thead class="bg-slate-100 text-slate-700 uppercase">
+                    <tr>
+                      <th class="py-2.5 px-3">사용일자</th>
+                      <th class="py-2.5 px-3">신청자</th>
+                      <th class="py-2.5 px-3">부서</th>
+                      <th class="py-2.5 px-3">휴가구분</th>
+                      <th class="py-2.5 px-3 text-right">차감일수</th>
+                      <th class="py-2.5 px-3">사유</th>
+                      <th class="py-2.5 px-3 text-center">결재상태</th>
+                      <th class="py-2.5 px-3 text-center">결재처리</th>
+                    </tr>
+                  </thead>
+                  <tbody id="pendingTableBody" class="divide-y divide-slate-200"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <div>
+                  <h3 class="text-base font-bold text-slate-800">전체 휴가 사용/결재 이력</h3>
+                  <p class="text-xs text-slate-500">직원별, 연도별, 월별로 승인 완료된 휴가 기록을 검색할 수 있습니다.</p>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <select id="historyFilterEmp" onchange="renderRequestView()" class="text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg">
+                    <option value="ALL">전체 직원</option>
+                  </select>
+                  <select id="historyFilterYear" onchange="renderRequestView()" class="text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg">
+                    <option value="ALL">전체 연도</option>
+                  </select>
+                  <select id="historyFilterMonth" onchange="renderRequestView()" class="text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg">
+                    <option value="ALL">전체 월</option>
+                    <option value="01">1월</option><option value="02">2월</option><option value="03">3월</option>
+                    <option value="04">4월</option><option value="05">5월</option><option value="06">6월</option>
+                    <option value="07">7월</option><option value="08">8월</option><option value="09">9월</option>
+                    <option value="10" selected>10월</option><option value="11">11월</option><option value="12">12월</option>
+                  </select>
+                </div>
+              </div>
+              <div class="max-h-[420px] overflow-y-auto custom-scrollbar border border-slate-200 rounded-lg">
+                <table class="w-full text-xs text-left border-collapse">
+                  <thead class="bg-slate-800 text-white sticky top-0">
+                    <tr>
+                      <th class="py-2.5 px-3">사용일자</th>
+                      <th class="py-2.5 px-3">성함</th>
+                      <th class="py-2.5 px-3">부서</th>
+                      <th class="py-2.5 px-3">구분</th>
+                      <th class="py-2.5 px-3 text-right">차감일수</th>
+                      <th class="py-2.5 px-3">사유/비고</th>
+                      <th class="py-2.5 px-3 text-center">상태</th>
+                      <th class="py-2.5 px-3 text-center admin-col hidden">관리</th>
+                    </tr>
+                  </thead>
+                  <tbody id="historyTableBody" class="divide-y divide-slate-200"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. 사내 복지 · 생일 안내 -->
+      <section id="view-welfare" class="hidden space-y-6">
+        <div>
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <span class="text-xs font-semibold text-pink-600 uppercase">UAN MEDI WELFARE</span>
+              <h2 class="text-lg font-bold text-slate-800">유안메디 임직원 복지 제도 안내</h2>
+            </div>
+            <button onclick="openWelfareModal(-1)" class="admin-col hidden px-3.5 py-2 bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold rounded-lg shadow-xs transition">
+              <i class="fa-solid fa-plus mr-1"></i>복지 제도 추가
+            </button>
+          </div>
+          <div id="welfareCardsGrid" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4"></div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-4 bg-gradient-to-br from-pink-500 to-rose-600 text-white p-6 rounded-2xl shadow-md flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="px-2.5 py-1 rounded-full bg-white/20 text-xs font-semibold">🎂 이달의 생일자 조회</span>
+                <select id="bdayHighlightMonth" onchange="renderWelfareView()" class="bg-white/20 text-white text-xs font-bold px-2.5 py-1 rounded border border-white/30 focus:outline-none">
+                  <option value="01" class="text-slate-900">1월</option><option value="02" class="text-slate-900">2월</option>
+                  <option value="03" class="text-slate-900">3월</option><option value="04" class="text-slate-900">4월</option>
+                  <option value="05" class="text-slate-900">5월</option><option value="06" class="text-slate-900">6월</option>
+                  <option value="07" class="text-slate-900">7월</option><option value="08" class="text-slate-900">8월</option>
+                  <option value="09" class="text-slate-900">9월</option><option value="10" selected class="text-slate-900">10월</option>
+                  <option value="11" class="text-slate-900">11월</option><option value="12" class="text-slate-900">12월</option>
+                </select>
+              </div>
+              <h3 class="text-2xl font-bold mt-3">생일을 진심으로 축하합니다!</h3>
+              <p class="text-xs text-pink-100 mt-1">생일 당월에는 연차 차감 없는 <strong>[생일반차(0.5일)]</strong>를 사용하실 수 있습니다.</p>
+              <div id="thisMonthBirthdaysList" class="mt-5 space-y-2.5"></div>
+            </div>
+            <div class="mt-6 pt-4 border-t border-white/20 text-xs text-pink-100 flex items-center justify-between">
+              <span>연차 신청 시 '생일반차(복지)' 선택</span>
+              <button onclick="switchTab('request')" class="px-3 py-1.5 bg-white text-rose-600 font-bold rounded-lg shadow-sm hover:bg-pink-50 transition">
+                생일반차 신청 →
+              </button>
+            </div>
+          </div>
+
+          <div class="lg:col-span-8 bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h3 class="text-base font-bold text-slate-800">전 직원 연간 생일 일람표</h3>
+                <p class="text-xs text-slate-400">지정 관리자 계정으로 접속 시 생일자 정보를 추가·수정·삭제할 수 있습니다.</p>
+              </div>
+              <button onclick="openBirthdayModal(-1)" class="admin-col hidden px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg">
+                <i class="fa-solid fa-user-plus mr-1"></i>생일자 등록
+              </button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3" id="allBirthdaysGrid"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. 임직원 비상연락망 -->
+      <section id="view-contacts" class="hidden space-y-5">
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <span class="text-xs font-semibold text-cyan-600 uppercase">DIRECTORY</span>
+            <h2 class="text-lg font-bold text-slate-800 mt-0.5">유안메디 임직원 비상연락망 및 법인 정보</h2>
+            <p class="text-xs text-slate-500 mt-1">본사 주소: 경기도 하남시 덕풍로 65번길 22, 3층 | TEL: 031-795-5444 | FAX: 031-794-7444 | E-mail: uanmedi@naver.com</p>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <button onclick="sortContacts('id')" class="px-2.5 py-1.5 rounded bg-slate-100 hover:bg-blue-100 text-xs font-semibold">사번순 정렬</button>
+            <label class="inline-flex items-center gap-1.5 text-xs text-slate-600 bg-slate-100 px-2.5 py-2 rounded-lg cursor-pointer">
+              <input type="checkbox" id="contactShowResigned" onchange="renderContactsView()" class="rounded text-blue-600" />
+              <span>퇴사자 포함</span>
+            </label>
+            <input type="text" id="contactSearchInput" oninput="renderContactsView()" placeholder="이름, 부서, 연락처 검색..." class="text-xs px-3 py-2 border border-slate-300 rounded-lg w-52" />
+            <button onclick="openContactModal(-1)" class="admin-col hidden px-3.5 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold rounded-lg shadow-xs">
+              <i class="fa-solid fa-plus mr-1"></i>연락처 추가
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs sm:text-sm text-left border-collapse">
+              <thead class="bg-slate-800 text-white text-xs">
+                <tr>
+                  <th class="py-3 px-3 text-center w-16">위치</th>
+                  <th class="py-3 px-4">구분/사번</th>
+                  <th class="py-3 px-4">성함</th>
+                  <th class="py-3 px-4">부서</th>
+                  <th class="py-3 px-4">직함</th>
+                  <th class="py-3 px-4">연락처</th>
+                  <th class="py-3 px-4">생년월일</th>
+                  <th class="py-3 px-4">입사일자</th>
+                  <th class="py-3 px-4">주소 / 비고</th>
+                  <th class="py-3 px-4 text-center admin-col hidden">관리</th>
+                </tr>
+              </thead>
+              <tbody id="contactsTableBody" class="divide-y divide-slate-200"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6. 노무법인 월별제출 -->
+      <section id="view-labor" class="hidden space-y-5">
+        <div class="bg-amber-50 border border-amber-200 p-5 rounded-xl flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <span class="text-xs font-bold text-amber-700 uppercase"><i class="fa-solid fa-shield-halved mr-1"></i>지정 관리자 전용 리포트</span>
+            <h2 class="text-lg font-bold text-slate-900 mt-0.5">노무법인 매월 제출용 근태·연차 정산표</h2>
+            <p class="text-xs text-slate-600 mt-1">연차관리 제외 대상(대표이사, 최창조 이사, 서정이 약사 등)은 자동 제외되며, 입사기념일 주기별 연차 초기화가 자동 반영됩니다.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <select id="laborYear" onchange="renderLaborView()" class="px-3 py-2 rounded-lg border border-amber-300 font-bold bg-white text-sm"></select>
+            <select id="laborMonth" onchange="renderLaborView()" class="px-3 py-2 rounded-lg border border-amber-300 font-bold bg-white text-sm">
+              <option value="1">1월</option><option value="2">2월</option><option value="3">3월</option>
+              <option value="4">4월</option><option value="5">5월</option><option value="6">6월</option>
+              <option value="7">7월</option><option value="8">8월</option><option value="9">9월</option>
+              <option value="10" selected>10월</option><option value="11">11월</option><option value="12">12월</option>
+            </select>
+            <button onclick="exportLaborCSV()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg shadow flex items-center gap-1.5">
+              <i class="fa-solid fa-download"></i>CSV(엑셀) 다운로드
+            </button>
+            <button onclick="window.print()" class="px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold rounded-lg">
+              <i class="fa-solid fa-print mr-1"></i>인쇄/PDF
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs sm:text-sm text-left border-collapse">
+              <thead class="bg-slate-800 text-white text-xs">
+                <tr>
+                  <th class="py-3 px-4">사번</th>
+                  <th class="py-3 px-4">성함</th>
+                  <th class="py-3 px-4">부서</th>
+                  <th class="py-3 px-4">직함</th>
+                  <th class="py-3 px-4">입사일자</th>
+                  <th class="py-3 px-4 text-right">당월 총 소정근로일수</th>
+                  <th class="py-3 px-4 text-right">당월 사용연차</th>
+                  <th class="py-3 px-4 text-right bg-blue-900">당월 실근무일수</th>
+                  <th class="py-3 px-4 text-right">당월 말 잔여연차</th>
+                  <th class="py-3 px-4">비고 (입·퇴사/주기갱신/복지휴가)</th>
+                </tr>
+              </thead>
+              <tbody id="laborTableBody" class="divide-y divide-slate-200"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7. 기초 데이터 & 관리자 선정 관리 -->
+      <section id="view-adminEmp" class="hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-8 bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div>
+                <span class="text-xs font-bold text-amber-600 uppercase">ADMIN & HR MASTER</span>
+                <h3 class="text-base font-bold text-slate-800">임직원 인사정보 · 관리자 선정(👑) · 연차제외 설정</h3>
+                <p class="text-xs text-slate-500 mt-0.5">아래 표에서 <strong>[👑 관리자 선정]</strong>에 체크된 직원이 본인 계정으로 로그인하면 관리자 권한이 자동 부여됩니다.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="sortEmployees('id')" class="px-3 py-1.5 bg-slate-100 hover:bg-blue-100 text-slate-700 text-xs font-bold rounded-lg">
+                  <i class="fa-solid fa-arrow-down-1-9 mr-1"></i>사번순 정렬
+                </button>
+                <button onclick="openEmpModal(-1)" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg">
+                  <i class="fa-solid fa-user-plus mr-1"></i>신규 직원 등록
+                </button>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs text-left border-collapse">
+                <thead class="bg-slate-100 text-slate-700">
+                  <tr>
+                    <th class="py-2.5 px-2 text-center">순서</th>
+                    <th class="py-2.5 px-3">사번</th>
+                    <th class="py-2.5 px-3">성함</th>
+                    <th class="py-2.5 px-3">부서/직함</th>
+                    <th class="py-2.5 px-3">입사일자</th>
+                    <th class="py-2.5 px-3 text-center">로그인 PIN</th>
+                    <th class="py-2.5 px-3 text-center bg-amber-100/70 text-amber-900">👑 관리자 선정</th>
+                    <th class="py-2.5 px-3 text-center">연차제외</th>
+                    <th class="py-2.5 px-3 text-center">상태</th>
+                    <th class="py-2.5 px-3 text-center">수정/삭제</th>
+                  </tr>
+                </thead>
+                <tbody id="adminEmpTableBody" class="divide-y divide-slate-200"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="lg:col-span-4 bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
+            <div class="border-b border-slate-100 pb-3">
+              <span class="text-xs font-bold text-rose-600 uppercase">HOLIDAY CALENDAR (2024~2035)</span>
+              <h3 class="text-base font-bold text-slate-800">법정공휴일 및 회사 기념일 관리</h3>
+              <p class="text-xs text-slate-500">2027년 이후에도 연도별 기본 공휴일을 원클릭 생성하거나 개별 추가할 수 있습니다.</p>
+            </div>
+
+            <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 flex items-center justify-between gap-2 text-xs">
+              <div class="flex items-center gap-1.5">
+                <span class="font-semibold text-slate-700">연도 필터:</span>
+                <select id="adminHolYearFilter" onchange="renderAdminEmpView()" class="px-2 py-1 border border-slate-300 rounded font-bold bg-white">
+                  <option value="ALL">전체 연도</option>
+                </select>
+              </div>
+              <button onclick="generateStandardHolidaysForYear()" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded transition">
+                + 기본휴일 자동생성
+              </button>
+            </div>
+
+            <form onsubmit="addHoliday(event)" class="flex gap-2 text-xs">
+              <input type="date" id="newHolDate" required class="px-2.5 py-1.5 border border-slate-300 rounded-lg" />
+              <input type="text" id="newHolName" required placeholder="공휴일명 (예: 추석, 대체공휴일)" class="flex-1 px-2.5 py-1.5 border border-slate-300 rounded-lg" />
+              <button type="submit" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg whitespace-nowrap">추가</button>
+            </form>
+
+            <div class="max-h-[420px] overflow-y-auto custom-scrollbar border border-slate-200 rounded-lg">
+              <table class="w-full text-xs text-left border-collapse">
+                <thead class="bg-slate-800 text-white sticky top-0">
+                  <tr>
+                    <th class="py-2 px-3">일자</th>
+                    <th class="py-2 px-3">공휴일/기념일명</th>
+                    <th class="py-2 px-3 text-center">삭제</th>
+                  </tr>
+                </thead>
+                <tbody id="adminHolidayTableBody" class="divide-y divide-slate-200"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- 1. Personal Account Login Modal (최초 접속 강제 로그인) -->
+  <div id="loginModal" class="fixed inset-0 bg-slate-900/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-slate-200">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 shadow-xs flex flex-col items-center justify-center shrink-0">
+            <svg viewBox="0 0 120 55" class="h-5 w-auto">
+              <polygon points="12,5 30,5 42,32 24,32" fill="#0038c7"/>
+              <polygon points="55,5 73,5 48,52 30,52" fill="#0038c7"/>
+              <polygon points="82,5 100,5 75,52 57,52" fill="#0038c7"/>
+              <polygon points="86,25 104,25 114,52 96,52" fill="#0038c7"/>
+            </svg>
+            <span class="text-[8px] font-extrabold text-[#0038c7] mt-0.5">유안메디</span>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-900">유안메디 임직원 계정 로그인</h3>
+            <p class="text-[11px] text-slate-500">본인 계정으로 로그인해야 연차 신청 및 열람이 가능합니다.</p>
+          </div>
+        </div>
+        <button id="loginModalCloseBtn" onclick="closeLoginModal()" class="hidden text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <form onsubmit="submitUserLogin(event)" class="space-y-3.5 text-xs sm:text-sm">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">접속할 임직원 선택 (사번 / 성함)</label>
+          <select id="loginEmpSelect" onchange="handleLoginSelectChange()" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl font-bold text-slate-800 bg-slate-50 focus:outline-none focus:border-blue-500"></select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">개인 비밀번호 (PIN 4자리)</label>
+          <input type="password" id="loginPinInput" required placeholder="초기 비밀번호: 휴대폰 뒷 4자리" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl font-mono text-center text-base tracking-widest focus:outline-none focus:border-blue-500" />
+          <p class="text-[11px] text-slate-500 mt-1 text-center" id="loginPinHintText">
+            * 초기 비밀번호는 본인 휴대폰 번호 뒷 4자리입니다.
+          </p>
+        </div>
+
+        <button type="submit" class="w-full py-2.5 rounded-xl bg-[#0038c7] hover:bg-blue-800 text-white font-bold shadow transition">
+          <i class="fa-solid fa-right-to-bracket mr-1.5"></i>내 계정으로 로그인
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. My Personal PIN Change Modal -->
+  <div id="myPinModal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-base font-bold text-slate-800">내 로그인 비밀번호(PIN) 변경</h3>
+        <button onclick="closeMyPinChangeModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="saveMyNewPin(event)" class="space-y-3 text-xs sm:text-sm">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">현재 접속 계정</label>
+          <input type="text" id="myPinUserDisplay" readonly class="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg font-bold text-slate-700" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">새 비밀번호 (4자리 이상)</label>
+          <input type="password" id="newMyPinInput" required placeholder="새 비밀번호 입력" class="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-center" />
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeMyPinChangeModal()" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 text-xs font-semibold">취소</button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold">저장하기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. Custom Leave Type Manager Modal -->
+  <div id="leaveTypeModal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div>
+          <h3 class="text-base font-bold text-slate-800">휴가 구분(유형) 추가 및 관리</h3>
+          <p class="text-xs text-slate-500">새로운 휴가 구분(예: 여름휴가, 포상휴가, 반반차 등)과 차감일수를 자유롭게 추가하세요.</p>
+        </div>
+        <button onclick="closeLeaveTypeModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <form onsubmit="addCustomLeaveType(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
+        <div class="sm:col-span-4">
+          <label class="block text-[11px] font-bold text-slate-600 mb-1">휴가 구분명</label>
+          <input type="text" id="newLtName" required placeholder="예: 여름휴가" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white" />
+        </div>
+        <div class="sm:col-span-3">
+          <label class="block text-[11px] font-bold text-slate-600 mb-1">차감일수</label>
+          <input type="number" step="0.25" min="0" max="30" id="newLtDays" required value="0" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white font-bold" />
+        </div>
+        <div class="sm:col-span-3">
+          <label class="block text-[11px] font-bold text-slate-600 mb-1">달력 색상</label>
+          <select id="newLtColor" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white font-semibold">
+            <option value="blue">파랑 (연차형)</option>
+            <option value="sky">하늘 (반차형)</option>
+            <option value="pink">핑크 (복지형)</option>
+            <option value="emerald">초록 (공가형)</option>
+            <option value="purple">보라 (특별휴가)</option>
+            <option value="amber">주황 (대체/기타)</option>
+          </select>
+        </div>
+        <div class="sm:col-span-2 flex items-end">
+          <button type="submit" class="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg">+ 추가</button>
+        </div>
+      </form>
+
+      <div class="max-h-64 overflow-y-auto custom-scrollbar border border-slate-200 rounded-xl">
+        <table class="w-full text-xs text-left border-collapse">
+          <thead class="bg-slate-800 text-white sticky top-0">
+            <tr>
+              <th class="py-2 px-3">휴가 구분명</th>
+              <th class="py-2 px-3 text-right">1일당 차감일수</th>
+              <th class="py-2 px-3 text-center">캘린더 배지 미리보기</th>
+              <th class="py-2 px-3 text-center">삭제</th>
+            </tr>
+          </thead>
+          <tbody id="leaveTypeTableBody" class="divide-y divide-slate-200"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Employee Detail / Edit Modal -->
+  <div id="empModal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-base font-bold text-slate-800" id="empModalTitle">직원 정보 등록/수정</h3>
+        <button onclick="closeEmpModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="saveEmpModal(event)" class="space-y-3 text-xs sm:text-sm">
+        <input type="hidden" id="editEmpIndex" value="-1" />
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">사번</label>
+            <input type="text" id="editEmpId" required placeholder="예: UAN00 또는 UAN18" class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">성함</label>
+            <input type="text" id="editEmpName" required class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">부서</label>
+            <input type="text" id="editEmpDept" required placeholder="임원실 / 영업팀 / 물류팀 / 마케팅" class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">직함</label>
+            <input type="text" id="editEmpRole" required placeholder="대표이사 / 이사 / 약사 / 팀장" class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">입사일자</label>
+            <input type="date" id="editEmpJoin" required class="w-full px-2.5 py-2 border border-slate-300 rounded-lg text-xs" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">퇴사일자</label>
+            <input type="date" id="editEmpResign" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg text-xs" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">개인 로그인 PIN</label>
+            <input type="text" id="editEmpPin" required placeholder="4자리" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg font-mono text-center text-xs" />
+          </div>
+        </div>
+        <div class="space-y-2 pt-1">
+          <label class="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-300 cursor-pointer">
+            <input type="checkbox" id="editEmpAdminRole" class="rounded text-amber-600 w-4 h-4" />
+            <span class="text-xs font-bold text-amber-900">👑 관리자로 선정 (결재 승인/반려, 노무제출, 인사·복지 수정 권한 부여)</span>
+          </label>
+          <label class="flex items-center gap-2 p-2.5 rounded-lg bg-slate-100 border border-slate-200 cursor-pointer">
+            <input type="checkbox" id="editEmpExempt" class="rounded text-slate-600 w-4 h-4" />
+            <span class="text-xs font-semibold text-slate-700">연차관리 제외 대상 (대표이사 / 임원 / 약사 등 연차 미신청 인원)</span>
+          </label>
+        </div>
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeEmpModal()" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 text-xs font-semibold">취소</button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold">저장하기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 5. Welfare Benefit Edit Modal -->
+  <div id="welfareModal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-base font-bold text-slate-800" id="welfareModalTitle">사내 복지 제도 등록/수정</h3>
+        <button onclick="closeWelfareModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="saveWelfareModal(event)" class="space-y-3 text-xs sm:text-sm">
+        <input type="hidden" id="editWelfareIdx" value="-1" />
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">복지 항목명</label>
+          <input type="text" id="editWelfareTitle" required placeholder="예: 여름휴가비 지원" class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">배지 태그</label>
+            <input type="text" id="editWelfareBadge" required placeholder="예: 복지지원 / 유급휴무" class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">아이콘 선택</label>
+            <select id="editWelfareIcon" class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white">
+              <option value="fa-gift">🎁 선물/복지</option>
+              <option value="fa-building-flag">🏢 창립기념일</option>
+              <option value="fa-cake-candles">🎂 생일지원</option>
+              <option value="fa-graduation-cap">🎓 교육비/자기계발</option>
+              <option value="fa-people-group">👥 팀활동비</option>
+              <option value="fa-envelope-open-text">💌 경조사지원</option>
+              <option value="fa-heart-pulse">🏥 건강검진/의료</option>
+              <option value="fa-mug-hot">☕ 휴게/간식</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">상세 설명</label>
+          <textarea id="editWelfareDesc" rows="3" required placeholder="복지 혜택 상세 내용을 입력하세요" class="w-full px-3 py-2 border border-slate-300 rounded-lg"></textarea>
+        </div>
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeWelfareModal()" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 text-xs font-semibold">취소</button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold">저장하기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 6. Birthday Edit Modal -->
+  <div id="birthdayModal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-base font-bold text-slate-800" id="birthdayModalTitle">생일자 등록/수정</h3>
+        <button onclick="closeBirthdayModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="saveBirthdayModal(event)" class="space-y-3 text-xs sm:text-sm">
+        <input type="hidden" id="editBdayIdx" value="-1" />
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">성함</label>
+            <input type="text" id="editBdayName" required class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">부서</label>
+            <input type="text" id="editBdayDept" required placeholder="영업팀 / 물류팀 / 마케팅" class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">직함</label>
+            <input type="text" id="editBdayRole" required placeholder="이사 / 팀장 / 대리 / 주임" class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">생일 (생년월일)</label>
+            <input type="date" id="editBdayFullDate" required class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeBirthdayModal()" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 text-xs font-semibold">취소</button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold">저장하기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 7. Contact Directory Edit Modal -->
+  <div id="contactModal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-base font-bold text-slate-800" id="contactModalTitle">임직원 비상연락망 등록/수정</h3>
+        <button onclick="closeContactModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="saveContactModal(event)" class="space-y-3 text-xs sm:text-sm">
+        <input type="hidden" id="editContactIdx" value="-1" />
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">사번 / 구분코드</label>
+            <input type="text" id="editContactId" required placeholder="예: UAN01 또는 UAN00" class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">성함 / 명칭</label>
+            <input type="text" id="editContactName" required placeholder="성함 또는 법인폰 명칭" class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">부서</label>
+            <input type="text" id="editContactDept" placeholder="영업지원팀 등" class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">직함</label>
+            <input type="text" id="editContactRole" placeholder="팀장 / 대리 / 주임" class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">연락처</label>
+            <input type="text" id="editContactPhone" placeholder="010-0000-0000" class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">생년월일</label>
+            <input type="date" id="editContactBirth" class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">입사일자</label>
+            <input type="date" id="editContactJoin" class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">퇴사일자 (재직 공란)</label>
+            <input type="date" id="editContactResign" class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">자택 주소</label>
+          <input type="text" id="editContactAddr" placeholder="주소 입력" class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">비고 (내선번호 / 이메일 등)</label>
+          <input type="text" id="editContactNote" placeholder="비고 사항" class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+        </div>
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeContactModal()" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 text-xs font-semibold">취소</button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold">저장하기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 8. Personal Leave History Modal -->
+  <div id="empHistoryModal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div>
+          <h3 class="text-base font-bold text-slate-800" id="empHistModalTitle">직원별 상세 휴가 사용내역</h3>
+          <p class="text-xs text-slate-500" id="empHistModalSub"></p>
+        </div>
+        <button onclick="closeEmpHistoryModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="max-h-[380px] overflow-y-auto custom-scrollbar border border-slate-200 rounded-lg">
+        <table class="w-full text-xs text-left border-collapse">
+          <thead class="bg-slate-800 text-white sticky top-0">
+            <tr>
+              <th class="py-2 px-3">사용일자</th>
+              <th class="py-2 px-3">구분</th>
+              <th class="py-2 px-3 text-right">차감일수</th>
+              <th class="py-2 px-3">적용 연차주기</th>
+              <th class="py-2 px-3">사유/비고</th>
+            </tr>
+          </thead>
+          <tbody id="empHistModalBody" class="divide-y divide-slate-200"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ================= INITIAL DATA FROM GOOGLE SHEETS =================
+    const INITIAL_EMPLOYEES = [{"id": "UAN00", "name": "손종진", "dept": "임원실", "role": "대표이사", "joinDate": "2024-01-01", "resignDate": "", "leaveExempt": true, "isAdminRole": true, "pin": "7776"}, {"id": "UAN00", "name": "최창조", "dept": "임원실", "role": "이사", "joinDate": "2024-01-01", "resignDate": "", "leaveExempt": true, "isAdminRole": true, "pin": "5310"}, {"id": "UAN00", "name": "서정이", "dept": "약무팀", "role": "약사", "joinDate": "2024-01-01", "resignDate": "", "leaveExempt": true, "isAdminRole": false, "pin": "6581"}, {"id": "UAN01", "name": "원종성", "dept": "영업팀", "role": "이사", "joinDate": "2024-01-10", "resignDate": "", "leaveExempt": false, "isAdminRole": true, "pin": "7313"}, {"id": "UAN02", "name": "홍승만", "dept": "영업지원팀", "role": "팀장", "joinDate": "2024-01-01", "resignDate": "", "leaveExempt": false, "isAdminRole": true, "pin": "6419"}, {"id": "UAN03", "name": "김화연", "dept": "물류팀", "role": "팀장", "joinDate": "2024-01-01", "resignDate": "2026-07-21", "leaveExempt": false, "isAdminRole": false, "pin": "0000"}, {"id": "UAN04", "name": "권광호", "dept": "물류팀", "role": "과장", "joinDate": "2024-01-01", "resignDate": "2026-04-30", "leaveExempt": false, "isAdminRole": false, "pin": "0000"}, {"id": "UAN05", "name": "정영진", "dept": "물류팀", "role": "팀장", "joinDate": "2025-01-02", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "8728"}, {"id": "UAN06", "name": "이재상", "dept": "물류팀", "role": "대리", "joinDate": "2025-05-07", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "5542"}, {"id": "UAN07", "name": "이주희", "dept": "마케팅", "role": "대리", "joinDate": "2025-04-28", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "8343"}, {"id": "UAN08", "name": "최슬기", "dept": "마케팅", "role": "대리", "joinDate": "2025-07-14", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "4318"}, {"id": "UAN09", "name": "김이한", "dept": "물류팀", "role": "대리", "joinDate": "2025-10-27", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "7379"}, {"id": "UAN10", "name": "박은진", "dept": "마케팅", "role": "대리", "joinDate": "2025-10-27", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "9133"}, {"id": "UAN11", "name": "김준혁", "dept": "물류팀", "role": "주임", "joinDate": "2026-04-13", "resignDate": "2026-05-29", "leaveExempt": false, "isAdminRole": false, "pin": "0000"}, {"id": "UAN12", "name": "안종현", "dept": "물류팀", "role": "주임", "joinDate": "2026-06-15", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "4451"}, {"id": "UAN13", "name": "휘민", "dept": "영업지원팀", "role": "주임", "joinDate": "2026-06-15", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "0295"}, {"id": "UAN14", "name": "신현지", "dept": "물류팀", "role": "주임", "joinDate": "2026-07-20", "resignDate": "2026-09-30", "leaveExempt": false, "isAdminRole": false, "pin": "1473"}, {"id": "UAN15", "name": "문영아", "dept": "물류팀", "role": "주임", "joinDate": "2026-08-01", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "6917"}, {"id": "UAN16", "name": "오은혜", "dept": "물류팀", "role": "대리", "joinDate": "2026-09-01", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "2830"}, {"id": "UAN17", "name": "신가희", "dept": "물류팀", "role": "팀장", "joinDate": "2026-10-06", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "9147"}];
+    const INITIAL_LEAVES = [{"date": "2026-01-02", "name": "원종성", "dept": "영업팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-02-05", "name": "원종성", "dept": "영업팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-02-06", "name": "원종성", "dept": "영업팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-03-12", "name": "원종성", "dept": "영업팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-03-13", "name": "원종성", "dept": "영업팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-04-17", "name": "원종성", "dept": "영업팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-04", "name": "원종성", "dept": "영업팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-02", "name": "홍승만", "dept": "영업지원팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-05", "name": "홍승만", "dept": "영업지원팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-06", "name": "홍승만", "dept": "영업지원팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-03-09", "name": "홍승만", "dept": "영업지원팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-04-03", "name": "홍승만", "dept": "영업지원팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-04", "name": "홍승만", "dept": "영업지원팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-06-11", "name": "홍승만", "dept": "영업지원팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-06-12", "name": "홍승만", "dept": "영업지원팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-07-10", "name": "홍승만", "dept": "영업지원팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-09-14", "name": "홍승만", "dept": "영업지원팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-02", "name": "김화연", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-03-03", "name": "김화연", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-03-20", "name": "김화연", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-04-03", "name": "김화연", "dept": "물류팀", "type": "오전반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-10", "name": "김화연", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-05-04", "name": "김화연", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-28", "name": "김화연", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-02", "name": "권광호", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-08", "name": "권광호", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-01-16", "name": "권광호", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-02-11", "name": "권광호", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-02-27", "name": "권광호", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-03-04", "name": "권광호", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-01", "name": "권광호", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-24", "name": "권광호", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-04-15", "name": "권광호", "dept": "물류팀", "type": "오전반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-17", "name": "권광호", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-23", "name": "권광호", "dept": "물류팀", "type": "오전반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-29", "name": "권광호", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-30", "name": "권광호", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-02", "name": "정영진", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-23", "name": "정영진", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-02-20", "name": "정영진", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-06", "name": "정영진", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-04-13", "name": "정영진", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-04", "name": "정영진", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-06-12", "name": "정영진", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-07-06", "name": "정영진", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-07-30", "name": "정영진", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-07-31", "name": "정영진", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-09-18", "name": "정영진", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-02", "name": "이주희", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-02-02", "name": "이주희", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-03-11", "name": "이주희", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-03-19", "name": "이주희", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-03-13", "name": "이주희", "dept": "마케팅", "type": "오전반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-01", "name": "이주희", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-04-17", "name": "이주희", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-05-04", "name": "이주희", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-18", "name": "이주희", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-19", "name": "이주희", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-12", "name": "이주희", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-06-02", "name": "이주희", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-06-09", "name": "이주희", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-07-01", "name": "이주희", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-07-29", "name": "이주희", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-07-30", "name": "이주희", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-09-01", "name": "이주희", "dept": "마케팅", "type": "오전반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-01-02", "name": "이재상", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-30", "name": "이재상", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-03-20", "name": "이재상", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-27", "name": "이재상", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-04-28", "name": "이재상", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-04", "name": "이재상", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-15", "name": "이재상", "dept": "물류팀", "type": "오전반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-06-26", "name": "이재상", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-06-29", "name": "이재상", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-07-24", "name": "이재상", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-08-28", "name": "이재상", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-08-19", "name": "이재상", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-01-02", "name": "최슬기", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-02-06", "name": "최슬기", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-02-09", "name": "최슬기", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-03-30", "name": "최슬기", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-04", "name": "최슬기", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-06-16", "name": "최슬기", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-07-10", "name": "최슬기", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-09-23", "name": "최슬기", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-01-02", "name": "김이한", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-02-06", "name": "김이한", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-02-27", "name": "김이한", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-04-01", "name": "김이한", "dept": "물류팀", "type": "오전반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-02", "name": "김이한", "dept": "물류팀", "type": "오전반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-05-04", "name": "김이한", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-11", "name": "김이한", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-06-18", "name": "김이한", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-06-22", "name": "김이한", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-09-16", "name": "김이한", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-09-17", "name": "김이한", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-02", "name": "박은진", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-03-30", "name": "박은진", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-04-13", "name": "박은진", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-04-20", "name": "박은진", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-04", "name": "박은진", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-06", "name": "박은진", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-06-02", "name": "박은진", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-06-30", "name": "박은진", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-04", "name": "김준혁", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-08-27", "name": "안종현", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-09-21", "name": "안종현", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-09-17", "name": "안종현", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-01", "name": "김이한", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "25년 사용분", "status": "승인완료"}, {"date": "2026-05-15", "name": "이재상", "dept": "물류팀", "type": "오전반차", "days": 0.5, "reason": "26년 5월 당겨 쓴 사용분", "status": "승인완료"}, {"date": "2026-04-29", "name": "이주희", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "26년 4월 당겨 쓴 사용분", "status": "승인완료"}, {"date": "2026-10-08", "name": "최슬기", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-10-16", "name": "최슬기", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-10-30", "name": "최슬기", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-10-26", "name": "이주희", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-10-26", "name": "이주희", "dept": "마케팅", "type": "생일반차(복지)", "days": 0.0, "reason": "생일 오전 반차", "status": "승인완료"}, {"date": "2026-10-02", "name": "박은진", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-10-19", "name": "박은진", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-10-21", "name": "박은진", "dept": "마케팅", "type": "오전반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-10-21", "name": "박은진", "dept": "마케팅", "type": "생일반차(복지)", "days": 0.0, "reason": "생일 오후 반차", "status": "승인완료"}, {"date": "2026-10-02", "name": "문영아", "dept": "물류팀", "type": "생일반차(복지)", "days": 0.0, "reason": "생일 오후 반차", "status": "승인완료"}, {"date": "2026-10-08", "name": "문영아", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-09-28", "name": "최슬기", "dept": "마케팅", "type": "휴일대체", "days": 0.0, "reason": "", "status": "승인완료"}, {"date": "2026-10-02", "name": "원종성", "dept": "영업팀", "type": "연차", "days": 1.0, "reason": "병원진료", "status": "승인완료"}, {"date": "2026-10-19", "name": "이재상", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-09-30", "name": "안종현", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "A형 독감감염 격리", "status": "승인완료"}, {"date": "2026-10-01", "name": "안종현", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "A형 독감감염 격리", "status": "승인완료"}, {"date": "2026-10-16", "name": "김이한", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "병원진료", "status": "승인완료"}, {"date": "2026-10-06", "name": "김이한", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "병원진료", "status": "승인완료"}, {"date": "2026-10-15", "name": "안종현", "dept": "물류팀", "type": "예비군", "days": 0.0, "reason": "예비군 훈련", "status": "승인완료"}, {"date": "2026-10-08", "name": "안종현", "dept": "물류팀", "type": "오전반차", "days": 0.5, "reason": "병원진료", "status": "승인완료"}, {"date": "2026-10-30", "name": "신가희", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "이사", "status": "승인완료"}, {"date": "2026-10-16", "name": "박은진", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "개인 사유", "status": "승인완료"}];
+    const INITIAL_HOLIDAYS = [{"date": "2026-01-01", "name": "새해"}, {"date": "2026-02-16", "name": "설날"}, {"date": "2026-02-17", "name": "설날"}, {"date": "2026-02-18", "name": "설날"}, {"date": "2026-03-02", "name": "삼일절(대체공휴일)"}, {"date": "2026-05-01", "name": "노동절"}, {"date": "2026-05-05", "name": "어린이날"}, {"date": "2026-05-25", "name": "부처님오신날(대체공휴일)"}, {"date": "2026-06-03", "name": "전국동시지방선거"}, {"date": "2026-06-06", "name": "현충일"}, {"date": "2026-08-17", "name": "광복절(대체공휴일)"}, {"date": "2026-09-24", "name": "추석"}, {"date": "2026-09-25", "name": "추석"}, {"date": "2026-09-26", "name": "추석"}, {"date": "2026-10-05", "name": "개천절(대체공휴일)"}, {"date": "2026-10-09", "name": "한글날"}, {"date": "2026-11-22", "name": "회사 창립일"}, {"date": "2026-12-25", "name": "크리스마스"}];
+    const INITIAL_CONTACTS = [{"id": "UAN00", "name": "손종진", "dept": "", "role": "대표이사", "birth": "1991-02-12", "joinDate": "", "resignDate": "", "phone": "010-3806-7776", "address": "서울시 강동구 고덕로 333 119동 1501호", "note": ""}, {"id": "UAN00", "name": "최창조", "dept": "", "role": "이사", "birth": "1991-05-31", "joinDate": "", "resignDate": "", "phone": "010-3351-5310", "address": "서울 동작구 본동 494, 래미안트윈파크 102동 2002호", "note": ""}, {"id": "UAN00", "name": "서정이", "dept": "", "role": "약사", "birth": "1952-03-03", "joinDate": "2024-01-01", "resignDate": "", "phone": "010-2770-6581", "address": "서울특별시 송파구 양산로 2길44, 거여3단지아파트 301동 110호", "note": ""}, {"id": "UAN00", "name": "도매 법인폰", "dept": "", "role": "", "birth": "", "joinDate": "", "resignDate": "", "phone": "010-3440-8444", "address": "경기도 하남시 덕풍로 65번길 22, 3층", "note": ""}, {"id": "UAN00", "name": "도매 법인폰2", "dept": "", "role": "", "birth": "", "joinDate": "", "resignDate": "", "phone": "010-5141-9444", "address": "경기도 하남시 덕풍로 65번길 22, 3층", "note": ""}, {"id": "UAN01", "name": "원종성", "dept": "영업팀", "role": "이사", "birth": "1969-01-03", "joinDate": "2024-01-10", "resignDate": "", "phone": "010-3743-7313", "address": "경기도 고양시 일산서구 가좌1로 10, 514동 2001호", "note": ""}, {"id": "UAN02", "name": "홍승만", "dept": "영업지원팀", "role": "팀장", "birth": "1991-02-12", "joinDate": "2024-01-01", "resignDate": "", "phone": "010-2713-6419", "address": "경기도 고양시 일산서구 강성로 62, 901동 301호", "note": ""}, {"id": "UAN03", "name": "김화연", "dept": "물류팀", "role": "팀장", "birth": "", "joinDate": "2024-01-01", "resignDate": "2026-07-21", "phone": "", "address": "", "note": ""}, {"id": "UAN04", "name": "권광호", "dept": "물류팀", "role": "과장", "birth": "", "joinDate": "2024-01-01", "resignDate": "2026-04-30", "phone": "", "address": "", "note": ""}, {"id": "UAN05", "name": "정영진", "dept": "물류팀", "role": "팀장", "birth": "1996-05-06", "joinDate": "2025-01-02", "resignDate": "", "phone": "010-4121-8728", "address": "경기도 하남시 덕풍동 415-18, 4층 502호", "note": ""}, {"id": "UAN06", "name": "이재상", "dept": "물류팀", "role": "대리", "birth": "1979-01-05", "joinDate": "2025-05-07", "resignDate": "", "phone": "010-5757-5542", "address": "경기도 구리시 수택동 549-6, 수택주공아파트 101동 1401호", "note": ""}, {"id": "UAN07", "name": "이주희", "dept": "마케팅", "role": "대리", "birth": "2000-10-26", "joinDate": "2025-04-28", "resignDate": "", "phone": "010-8455-8343", "address": "경기도 하남시 덕풍동로 60, 403동 1104호", "note": ""}, {"id": "UAN08", "name": "최슬기", "dept": "마케팅", "role": "대리", "birth": "1999-02-20", "joinDate": "2025-07-14", "resignDate": "", "phone": "010-9897-4318", "address": "서울특별시 강동구 성내동 46-19, 라움빌 402호", "note": ""}, {"id": "UAN09", "name": "김이한", "dept": "물류팀", "role": "대리", "birth": "1994-11-02", "joinDate": "2025-10-27", "resignDate": "", "phone": "010-6270-7379", "address": "경기도 하남시 미사강변동로 180, 1407동 2210호", "note": ""}, {"id": "UAN10", "name": "박은진", "dept": "마케팅", "role": "대리", "birth": "1999-10-21", "joinDate": "2025-10-27", "resignDate": "", "phone": "010-2054-9133", "address": "서울특별시 송파구 한가람로 478, 101동 604호", "note": ""}, {"id": "UAN11", "name": "김준혁", "dept": "물류팀", "role": "주임", "birth": "", "joinDate": "2026-04-13", "resignDate": "2026-05-29", "phone": "", "address": "", "note": ""}, {"id": "UAN12", "name": "안종현", "dept": "물류팀", "role": "주임", "birth": "1999-12-08", "joinDate": "2026-06-15", "resignDate": "", "phone": "010-6701-4451", "address": "서울특별시 강동구 상일로 74, 314동 1103호", "note": ""}, {"id": "UAN13", "name": "휘민", "dept": "영업지원팀", "role": "주임", "birth": "1995-02-01", "joinDate": "2026-06-15", "resignDate": "", "phone": "010-9226-0295", "address": "", "note": ""}, {"id": "UAN14", "name": "신현지", "dept": "물류팀", "role": "주임", "birth": "1999-04-19", "joinDate": "2026-07-20", "resignDate": "2026-09-30", "phone": "010-3574-1473", "address": "", "note": ""}, {"id": "UAN15", "name": "문영아", "dept": "물류팀", "role": "주임", "birth": "1998-10-04", "joinDate": "2026-08-01", "resignDate": "", "phone": "010-9289-6917", "address": "경기도 구리시 벌말로226, 토평주공아파트 505동 401호", "note": ""}, {"id": "UAN16", "name": "오은혜", "dept": "물류팀", "role": "대리", "birth": "1986-12-15", "joinDate": "2026-09-01", "resignDate": "", "phone": "010-9055-2830", "address": "경기도 성남시 성남대로 1194번길 3 밀란체3 302호", "note": ""}, {"id": "UAN17", "name": "신가희", "dept": "물류팀", "role": "팀장", "birth": "1991-04-07", "joinDate": "2026-10-06", "resignDate": "", "phone": "010-5160-9147", "address": "경기도 시흥시 황고개로469 1401동1003호 (장현 더포레마제)", "note": ""}];
+    const INITIAL_WELFARE = [{"id": 1, "title": "창립기념일 휴무", "desc": "매년 11월 22일 전 임직원 유급 휴무", "icon": "fa-building-flag", "badge": "유급휴무"}, {"id": 2, "title": "생일 반차 지원", "desc": "생일 당월 오전 또는 오후 반차(0.5일) 별도 부여 (연차 미차감)", "icon": "fa-cake-candles", "badge": "복지휴가"}, {"id": 3, "title": "업무관련 교육비 지원", "desc": "직무 역량 강화를 위한 외부 교육, 세미나, 도서 구입비 지원", "icon": "fa-graduation-cap", "badge": "자기계발"}, {"id": 4, "title": "팀활동비 지원", "desc": "분기당 30만원 지원 (미사용 시 차기 분기 이월 가능)", "icon": "fa-people-group", "badge": "분기 30만원"}, {"id": 5, "title": "경조사 지원", "desc": "임직원 경조휴가 부여 및 경조금, 경조화환 지급", "icon": "fa-envelope-open-text", "badge": "경조지원"}];
+    const INITIAL_BIRTHDAYS = [{"no": 1, "name": "원종성", "role": "이사", "dept": "영업팀", "date": "01-03", "fullDate": "1969-01-03"}, {"no": 2, "name": "이재상", "role": "대리", "dept": "물류팀", "date": "01-05", "fullDate": "1979-01-05"}, {"no": 3, "name": "휘민", "role": "주임", "dept": "영업지원팀", "date": "02-01", "fullDate": "1995-02-01"}, {"no": 4, "name": "홍승만", "role": "팀장", "dept": "영업지원팀", "date": "02-12", "fullDate": "1991-02-12"}, {"no": 5, "name": "최슬기", "role": "대리", "dept": "마케팅", "date": "02-20", "fullDate": "1999-02-20"}, {"no": 6, "name": "서정이", "role": "약사", "dept": "관리약사", "date": "03-03", "fullDate": "1952-03-03"}, {"no": 7, "name": "신가희", "role": "팀장", "dept": "물류팀", "date": "04-07", "fullDate": "1991-04-07"}, {"no": 8, "name": "정영진", "role": "팀장", "dept": "물류팀", "date": "05-06", "fullDate": "1996-05-06"}, {"no": 9, "name": "문영아", "role": "주임", "dept": "물류팀", "date": "10-04", "fullDate": "1998-10-04"}, {"no": 10, "name": "박은진", "role": "대리", "dept": "마케팅", "date": "10-21", "fullDate": "1999-10-21"}, {"no": 11, "name": "이주희", "role": "대리", "dept": "마케팅", "date": "10-26", "fullDate": "2000-10-26"}, {"no": 12, "name": "김이한", "role": "대리", "dept": "물류팀", "date": "11-02", "fullDate": "1994-11-02"}, {"no": 13, "name": "안종현", "role": "주임", "dept": "물류팀", "date": "12-08", "fullDate": "1999-12-08"}, {"no": 14, "name": "오은혜", "role": "대리", "dept": "물류팀", "date": "12-15", "fullDate": "1986-12-15"}];
+    const INITIAL_LEAVE_TYPES = [{"name": "연차", "days": 1.0, "color": "blue", "short": "연차"}, {"name": "오전반차", "days": 0.5, "color": "sky", "short": "오전"}, {"name": "오후반차", "days": 0.5, "color": "sky", "short": "오후"}, {"name": "생일반차(복지)", "days": 0.0, "color": "pink", "short": "생일"}, {"name": "예비군", "days": 0.0, "color": "emerald", "short": "예비"}, {"name": "경조휴가", "days": 0.0, "color": "purple", "short": "경조"}, {"name": "휴일대체", "days": 0.0, "color": "amber", "short": "대체"}];
+
+    const TODAY_STR = "2026-10-21";
+    const YEAR_START = 2024;
+    const YEAR_END = 2035;
+
+    // 조직은행 계정 내 유안메디 HR 전용 Firebase 설정
+    const firebaseConfig = {
+      apiKey: "AIzaSyAhjsCHnPEc3P-GT7Sm1EmDr-7QDXxIGJk",
+      authDomain: "uanmedi-hr.firebaseapp.com",
+      databaseURL: "https://uanmedi-hr-default-rtdb.firebaseio.com",
+      projectId: "uanmedi-hr",
+      storageBucket: "uanmedi-hr.firebasestorage.app",
+      messagingSenderId: "682357854545",
+      appId: "1:682357854545:web:4dd4eac2b318d179e08370"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const dbRef = firebase.database().ref('uanmedi_hr_portal');
+
+    let state = {
+      employees: JSON.parse(JSON.stringify(INITIAL_EMPLOYEES)),
+      leaves: JSON.parse(JSON.stringify(INITIAL_LEAVES)),
+      holidays: JSON.parse(JSON.stringify(INITIAL_HOLIDAYS)),
+      contacts: JSON.parse(JSON.stringify(INITIAL_CONTACTS)),
+      welfare: JSON.parse(JSON.stringify(INITIAL_WELFARE)),
+      birthdays: JSON.parse(JSON.stringify(INITIAL_BIRTHDAYS)),
+      leaveTypes: JSON.parse(JSON.stringify(INITIAL_LEAVE_TYPES)),
+      currentUser: "",
+      isAdmin: false,
+      sidebarOpen: true,
+      onlyMeFilter: false,
+      globalSearchQuery: "",
+      miniCalYear: 2026,
+      miniCalMonth: 10,
+      selectedDates: ["2026-10-22"],
+      dragSrcIdx: null,
+      isCloudSynced: false
+    };
+
+    function getColorClasses(colorName) {
+      const map = {
+        blue: { bg: "bg-blue-600 text-white", dot: "bg-blue-600" },
+        sky: { bg: "bg-sky-500 text-white", dot: "bg-sky-400" },
+        pink: { bg: "bg-pink-500 text-white", dot: "bg-pink-500" },
+        emerald: { bg: "bg-emerald-500 text-white", dot: "bg-emerald-500" },
+        purple: { bg: "bg-purple-600 text-white", dot: "bg-purple-600" },
+        amber: { bg: "bg-amber-500 text-white", dot: "bg-amber-500" }
+      };
+      return map[colorName] || map.blue;
+    }
+
+    function populateYearSelects() {
+      const yearSelectIds = ["calYear", "dashQuickYear", "laborYear"];
+      yearSelectIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        let html = "";
+        for (let y = YEAR_START; y <= YEAR_END; y++) {
+          html += `<option value="${y}" ${y === 2026 ? 'selected' : ''}>${y}년</option>`;
+        }
+        el.innerHTML = html;
+      });
+
+      const histYear = document.getElementById("historyFilterYear");
+      if (histYear) {
+        let html = `<option value="ALL">전체 연도</option>`;
+        for (let y = YEAR_START; y <= YEAR_END; y++) {
+          html += `<option value="${y}" ${y === 2026 ? 'selected' : ''}>${y}년</option>`;
+        }
+        histYear.innerHTML = html;
+      }
+
+      const holYear = document.getElementById("adminHolYearFilter");
+      if (holYear) {
+        let html = `<option value="ALL">전체 연도</option>`;
+        for (let y = YEAR_START; y <= YEAR_END; y++) {
+          html += `<option value="${y}" ${y === 2026 ? 'selected' : ''}>${y}년</option>`;
+        }
+        holYear.innerHTML = html;
+      }
+    }
+
+    function loadStateAndListen() {
+      dbRef.on("value", (snapshot) => {
+        const val = snapshot.val();
+        if (val && val.employees) {
+          state.employees = val.employees;
+          state.leaves = val.leaves || [];
+          state.holidays = val.holidays || INITIAL_HOLIDAYS;
+          state.contacts = val.contacts || INITIAL_CONTACTS;
+          state.welfare = val.welfare || INITIAL_WELFARE;
+          state.birthdays = val.birthdays || INITIAL_BIRTHDAYS;
+          state.leaveTypes = val.leaveTypes || INITIAL_LEAVE_TYPES;
+        } else {
+          dbRef.set({
+            employees: state.employees,
+            leaves: state.leaves,
+            holidays: state.holidays,
+            contacts: state.contacts,
+            welfare: state.welfare,
+            birthdays: state.birthdays,
+            leaveTypes: state.leaveTypes
+          });
+        }
+        state.isCloudSynced = true;
+
+        const loggedUser = sessionStorage.getItem("ym_logged_user_v6");
+        if (loggedUser && state.employees.some(e => e.name === loggedUser && !e.resignDate)) {
+          state.currentUser = loggedUser;
+          syncAdminStatusByLoggedUser();
+          closeLoginModal();
+        } else {
+          openLoginModal();
+        }
+
+        refreshAllViews();
+      });
+    }
+
+    function saveState() {
+      if (!state.isCloudSynced) return;
+      dbRef.set({
+        employees: state.employees,
+        leaves: state.leaves,
+        holidays: state.holidays,
+        contacts: state.contacts,
+        welfare: state.welfare,
+        birthdays: state.birthdays,
+        leaveTypes: state.leaveTypes
+      });
+      updatePendingBadge();
+    }
+
+    function toggleLeftSidebar() {
+      state.sidebarOpen = !state.sidebarOpen;
+      const sb = document.getElementById("leftSidebar");
+      const reopenBtn = document.getElementById("reopenSidebarBtn");
+      if (state.sidebarOpen) {
+        sb.classList.remove("hidden");
+        reopenBtn.classList.add("hidden");
+      } else {
+        sb.classList.add("hidden");
+        reopenBtn.classList.remove("hidden");
+      }
+    }
+
+    function switchTab(tabId) {
+      const views = ["calendar", "dashboard", "request", "welfare", "contacts", "labor", "adminEmp"];
+      views.forEach(v => {
+        document.getElementById(`view-${v}`).classList.add("hidden");
+        const tabBtn = document.getElementById(`tab-${v}`);
+        if (tabBtn) {
+          tabBtn.className = "nav-tab w-full px-3.5 py-3 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white flex items-center justify-between transition";
+        }
+      });
+      document.getElementById(`view-${tabId}`).classList.remove("hidden");
+      const activeBtn = document.getElementById(`tab-${tabId}`);
+      if (activeBtn) {
+        activeBtn.className = "nav-tab w-full px-3.5 py-3 rounded-xl text-sm font-bold bg-blue-600 text-white flex items-center justify-between shadow-sm transition";
+      }
+    }
+
+    function syncAdminStatusByLoggedUser() {
+      const emp = state.employees.find(e => e.name === state.currentUser);
+      state.isAdmin = Boolean(emp && emp.isAdminRole);
+    }
+
+    function logoutAndOpenLoginModal() {
+      sessionStorage.removeItem("ym_logged_user_v6");
+      state.currentUser = "";
+      state.isAdmin = false;
+      openLoginModal();
+    }
+
+    function openLoginModal() {
+      const sel = document.getElementById("loginEmpSelect");
+      const activeEmps = state.employees.filter(e => !e.resignDate);
+      sel.innerHTML = activeEmps.map(e =>
+        `<option value="${e.name}" ${e.name === state.currentUser ? 'selected' : ''}>
+          [${e.id}] ${e.name} (${e.dept || '임원'}·${e.role}) ${e.isAdminRole ? '👑관리자' : ''}
+        </option>`
+      ).join("");
+
+      document.getElementById("loginPinInput").value = "";
+      handleLoginSelectChange();
+
+      const closeBtn = document.getElementById("loginModalCloseBtn");
+      if (state.currentUser) closeBtn.classList.remove("hidden");
+      else closeBtn.classList.add("hidden");
+
+      const modal = document.getElementById("loginModal");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+      setTimeout(() => document.getElementById("loginPinInput").focus(), 50);
+    }
+
+    function handleLoginSelectChange() {
+      const selName = document.getElementById("loginEmpSelect").value;
+      const emp = state.employees.find(e => e.name === selName);
+      const hint = document.getElementById("loginPinHintText");
+      if (emp) {
+        hint.innerHTML = `* 초기 비밀번호는 본인 휴대폰 번호 뒷 4자리입니다. ${emp.isAdminRole ? '<span class="text-amber-600 font-bold">(👑 지정 관리자)</span>' : '(일반 직원)'}`;
+      }
+    }
+
+    function closeLoginModal() {
+      if (!state.currentUser) return;
+      const modal = document.getElementById("loginModal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+
+    function submitUserLogin(e) {
+      e.preventDefault();
+      const selName = document.getElementById("loginEmpSelect").value;
+      const pinInput = document.getElementById("loginPinInput").value.trim();
+      const emp = state.employees.find(x => x.name === selName);
+      if (!emp) return;
+
+      const expectedPin = emp.pin || "0000";
+      if (pinInput !== expectedPin) {
+        alert("개인 비밀번호(PIN)가 일치하지 않습니다.");
+        document.getElementById("loginPinInput").select();
+        return;
+      }
+
+      state.currentUser = emp.name;
+      sessionStorage.setItem("ym_logged_user_v6", emp.name);
+      syncAdminStatusByLoggedUser();
+      closeLoginModal();
+
+      if (!state.isAdmin) {
+        const curLab = !document.getElementById("view-labor").classList.contains("hidden");
+        const curAdm = !document.getElementById("view-adminEmp").classList.contains("hidden");
+        if (curLab || curAdm) switchTab("calendar");
+      }
+
+      refreshAllViews();
+    }
+
+    function openMyPinChangeModal() {
+      if (!state.currentUser) return;
+      const emp = state.employees.find(e => e.name === state.currentUser);
+      if (!emp) return;
+      document.getElementById("myPinUserDisplay").value = `${emp.name} (${emp.dept}·${emp.role})`;
+      document.getElementById("newMyPinInput").value = "";
+      const modal = document.getElementById("myPinModal");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    }
+
+    function closeMyPinChangeModal() {
+      const modal = document.getElementById("myPinModal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+
+    function saveMyNewPin(e) {
+      e.preventDefault();
+      const newPin = document.getElementById("newMyPinInput").value.trim();
+      if (newPin.length < 4) {
+        alert("비밀번호(PIN)는 4자리 이상으로 입력해주세요.");
+        return;
+      }
+      const emp = state.employees.find(x => x.name === state.currentUser);
+      if (emp) {
+        emp.pin = newPin;
+        saveState();
+        closeMyPinChangeModal();
+        alert(`${emp.name} 님의 로그인 비밀번호가 변경되었습니다.`);
+      }
+    }
+
+    function updateAdminUI() {
+      syncAdminStatusByLoggedUser();
+      const emp = state.employees.find(e => e.name === state.currentUser) || state.employees[0];
+      const headerBadge = document.getElementById("headerUserBadge");
+      const adminSidebar = document.getElementById("adminSidebarSection");
+      const sbRoleBadge = document.getElementById("sidebarRoleBadge");
+      const sbRoleDesc = document.getElementById("sidebarRoleDesc");
+      const hint = document.getElementById("adminApproveHint");
+
+      if (!state.currentUser) {
+        headerBadge.innerHTML = `<span class="text-slate-400">로그인 필요</span>`;
+        adminSidebar.classList.add("hidden");
+        return;
+      }
+
+      if (state.isAdmin) {
+        headerBadge.innerHTML = `
+          <span class="px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-extrabold text-[11px]"><i class="fa-solid fa-crown mr-1"></i>지정 관리자</span>
+          <span class="font-bold text-white">${emp.name}</span>
+          <span class="text-slate-400">(${emp.dept || '임원'}·${emp.role})</span>
+        `;
+        adminSidebar.classList.remove("hidden");
+        sbRoleBadge.innerHTML = `<span class="px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-bold text-[10px]">👑 관리자</span>`;
+        sbRoleDesc.textContent = "지정 관리자 계정으로 접속 중입니다. 휴가 결재 승인/반려, 노무법인 정산, 직원 및 관리자 선정 권한이 활성화되어 있습니다.";
+        if (hint) hint.innerHTML = `<span class="text-emerald-700 font-bold"><i class="fa-solid fa-crown mr-1 text-amber-500"></i>지정 관리자 권한(${emp.name}): 결재 승인/반려 및 전 직원 대리신청이 가능합니다.</span>`;
+        document.querySelectorAll(".admin-col").forEach(el => el.classList.remove("hidden"));
+      } else {
+        headerBadge.innerHTML = `
+          <span class="px-2 py-0.5 rounded bg-blue-600 text-white font-bold text-[11px]"><i class="fa-solid fa-user mr-1"></i>일반 직원</span>
+          <span class="font-bold text-white">${emp.name}</span>
+          <span class="text-slate-400">(${emp.dept}·${emp.role})</span>
+        `;
+        adminSidebar.classList.add("hidden");
+        sbRoleBadge.innerHTML = `<span class="px-2 py-0.5 rounded bg-slate-700 text-slate-300 font-bold text-[10px]">일반 직원</span>`;
+        sbRoleDesc.textContent = "일반 직원 계정으로 접속 중입니다. 본인 연차 신청 및 전체 근태 열람이 가능하며, 타인 정보는 임의로 입력할 수 없습니다.";
+        if (hint) hint.innerHTML = `<span class="text-slate-500"><i class="fa-solid fa-lock mr-1"></i>결재 승인/반려는 <strong>지정 관리자(팀장/임원)</strong> 계정 로그인 시 활성화됩니다.</span>`;
+        document.querySelectorAll(".admin-col").forEach(el => el.classList.add("hidden"));
+      }
+
+      const reqSel = document.getElementById("reqEmpName");
+      const lockLabel = document.getElementById("reqApplicantLockLabel");
+      const activeLeaveEmps = state.employees.filter(e => !e.resignDate && !e.leaveExempt);
+
+      if (state.isAdmin) {
+        reqSel.disabled = false;
+        reqSel.className = "w-full px-3 py-2 rounded-lg border border-amber-300 bg-white font-bold text-slate-800";
+        lockLabel.innerHTML = `<span class="text-amber-600"><i class="fa-solid fa-crown mr-0.5"></i>관리자 대리선택 가능</span>`;
+        const targetUser = activeLeaveEmps.some(e => e.name === state.currentUser) ? state.currentUser : (activeLeaveEmps[0]?.name || "");
+        reqSel.innerHTML = activeLeaveEmps.map(e => `<option value="${e.name}" ${e.name === targetUser ? 'selected' : ''}>${e.name} (${e.dept}·${e.role})</option>`).join("");
+      } else {
+        reqSel.disabled = true;
+        reqSel.className = "w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-100 font-bold text-slate-700 cursor-not-allowed";
+        lockLabel.innerHTML = `<span class="text-blue-600"><i class="fa-solid fa-lock mr-0.5"></i>본인 계정 고정</span>`;
+        reqSel.innerHTML = `<option value="${emp.name}" selected>${emp.name} (${emp.dept}·${emp.role})</option>`;
+      }
+
+      const histFilter = document.getElementById("historyFilterEmp");
+      if (histFilter) {
+        const curVal = histFilter.value || "ALL";
+        histFilter.innerHTML = `<option value="ALL">전체 직원</option>` + state.employees.filter(e => !e.leaveExempt).map(e => `<option value="${e.name}" ${e.name === curVal ? 'selected' : ''}>${e.name} (${e.dept})</option>`).join("");
+      }
+    }
+
+    function parseDate(str) {
+      if (!str) return null;
+      const [y, m, d] = str.split("-").map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    function formatDate(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
+    function getMonthEndStr(year, month) {
+      const lastDay = new Date(year, month, 0).getDate();
+      return `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    }
+
+    function addYearsToDateStr(dateStr, yearsToAdd) {
+      const d = parseDate(dateStr);
+      const next = new Date(d.getFullYear() + yearsToAdd, d.getMonth(), d.getDate());
+      return formatDate(next);
+    }
+
+    function addDaysToDateStr(dateStr, daysToAdd) {
+      const d = parseDate(dateStr);
+      d.setDate(d.getDate() + daysToAdd);
+      return formatDate(d);
+    }
+
+    function datedifMonths(startStr, endStr) {
+      const s = parseDate(startStr);
+      const e = parseDate(endStr);
+      if (!s || !e || e < s) return 0;
+      let months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth());
+      if (e.getDate() < s.getDate()) months -= 1;
+      return Math.max(0, months);
+    }
+
+    function calcEmployeeLeave(emp, refDateStr) {
+      const joinStr = emp.joinDate;
+      const firstAnnivStr = addYearsToDateStr(joinStr, 1);
+      const effectiveRefStr = (emp.resignDate && emp.resignDate !== "" && emp.resignDate < refDateStr)
+        ? emp.resignDate
+        : refDateStr;
+
+      const totalMonths = datedifMonths(joinStr, effectiveRefStr);
+      const years = Math.floor(totalMonths / 12);
+      const remMonths = totalMonths % 12;
+
+      const endUnder1Yr = effectiveRefStr < firstAnnivStr ? effectiveRefStr : firstAnnivStr;
+      const under1YrGen = effectiveRefStr < joinStr ? 0 : Math.min(11, datedifMonths(joinStr, endUnder1Yr));
+      const under1YrUsed = state.leaves
+        .filter(l => l.name === emp.name && l.status === "승인완료" && l.date < firstAnnivStr && l.date <= effectiveRefStr)
+        .reduce((acc, cur) => acc + Number(cur.days || 0), 0);
+
+      const rawUnder1YrDiff = under1YrGen - under1YrUsed;
+      const under1YrOveruseCarry = (years === 1 && rawUnder1YrDiff < 0) ? rawUnder1YrDiff : 0;
+      const under1YrRemain = effectiveRefStr >= firstAnnivStr ? 0 : rawUnder1YrDiff;
+
+      let cycleStartStr = joinStr;
+      let nextCycleStartStr = firstAnnivStr;
+      let cycleEndDisplayStr = addDaysToDateStr(firstAnnivStr, -1);
+      let over1YrGen = 0;
+      let over1YrUsed = 0;
+      let over1YrRemain = 0;
+
+      if (effectiveRefStr >= firstAnnivStr && years >= 1) {
+        cycleStartStr = addYearsToDateStr(joinStr, years);
+        nextCycleStartStr = addYearsToDateStr(joinStr, years + 1);
+        cycleEndDisplayStr = addDaysToDateStr(nextCycleStartStr, -1);
+
+        const addDays = Math.floor(Math.max(0, years - 1) / 2);
+        over1YrGen = Math.min(25, 15 + addDays);
+
+        over1YrUsed = state.leaves
+          .filter(l => l.name === emp.name && l.status === "승인완료" && l.date >= cycleStartStr && l.date < nextCycleStartStr && l.date <= effectiveRefStr)
+          .reduce((acc, cur) => acc + Number(cur.days || 0), 0);
+
+        over1YrRemain = over1YrGen - over1YrUsed + under1YrOveruseCarry;
+      }
+
+      const currentValidRemain = effectiveRefStr >= firstAnnivStr ? over1YrRemain : under1YrRemain;
+
+      return {
+        firstAnnivStr,
+        cycleStartStr,
+        nextCycleStartStr,
+        cycleEndDisplayStr,
+        cycleNumber: years,
+        tenureText: `${years}년 ${remMonths}개월`,
+        under1YrGen,
+        under1YrUsed,
+        under1YrRemain,
+        under1YrOveruseCarry,
+        over1YrGen,
+        over1YrUsed,
+        over1YrRemain,
+        currentValidRemain,
+        isOver1Yr: effectiveRefStr >= firstAnnivStr,
+        isResigned: Boolean(emp.resignDate && emp.resignDate !== "")
+      };
+    }
+
+    function sortEmployees(criteria) {
+      state.employees.sort((a, b) => {
+        if (criteria === "id") return a.id.localeCompare(b.id, "ko", { numeric: true });
+        if (criteria === "joinDate") return (a.joinDate || "").localeCompare(b.joinDate || "");
+        if (criteria === "dept") return (a.dept || "").localeCompare(b.dept || "", "ko") || a.id.localeCompare(b.id, "ko", { numeric: true });
+        if (criteria === "name") return (a.name || "").localeCompare(b.name || "", "ko");
+        return 0;
+      });
+      saveState();
+      refreshAllViews();
+    }
+
+    function moveEmployeeOrder(realIdx, direction) {
+      const targetIdx = realIdx + direction;
+      if (targetIdx < 0 || targetIdx >= state.employees.length) return;
+      const temp = state.employees[realIdx];
+      state.employees[realIdx] = state.employees[targetIdx];
+      state.employees[targetIdx] = temp;
+      saveState();
+      refreshAllViews();
+    }
+
+    function moveVisibleEmployee(empId, empName, direction, visibleArray) {
+      const posInVisible = visibleArray.findIndex(e => e.id === empId && e.name === empName);
+      if (posInVisible < 0) return;
+      const neighborPos = posInVisible + direction;
+      if (neighborPos < 0 || neighborPos >= visibleArray.length) return;
+
+      const curEmp = visibleArray[posInVisible];
+      const neighborEmp = visibleArray[neighborPos];
+
+      const idxA = state.employees.findIndex(e => e.id === curEmp.id && e.name === curEmp.name);
+      const idxB = state.employees.findIndex(e => e.id === neighborEmp.id && e.name === neighborEmp.name);
+      if (idxA < 0 || idxB < 0) return;
+
+      const temp = state.employees[idxA];
+      state.employees[idxA] = state.employees[idxB];
+      state.employees[idxB] = temp;
+      saveState();
+      refreshAllViews();
+    }
+
+    function handleDragStart(e, realIdx) {
+      state.dragSrcIdx = realIdx;
+      e.currentTarget.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      e.currentTarget.classList.add("drag-over");
+    }
+
+    function handleDragLeave(e) {
+      e.currentTarget.classList.remove("drag-over");
+    }
+
+    function handleDrop(e, targetRealIdx) {
+      e.preventDefault();
+      e.currentTarget.classList.remove("drag-over");
+      const srcIdx = state.dragSrcIdx;
+      if (srcIdx === null || srcIdx === targetRealIdx) return;
+      const movedItem = state.employees.splice(srcIdx, 1)[0];
+      state.employees.splice(targetRealIdx, 0, movedItem);
+      state.dragSrcIdx = null;
+      saveState();
+      refreshAllViews();
+    }
+
+    function handleDragEnd(e) {
+      e.currentTarget.classList.remove("dragging");
+      document.querySelectorAll(".drag-over").forEach(el => el.classList.remove("drag-over"));
+    }
+
+    function sortContacts(criteria) {
+      if (criteria === "id") {
+        state.contacts.sort((a, b) => a.id.localeCompare(b.id, "ko", { numeric: true }));
+      }
+      saveState();
+      renderContactsView();
+    }
+
+    function moveContactOrder(realIdx, direction) {
+      const targetIdx = realIdx + direction;
+      if (targetIdx < 0 || targetIdx >= state.contacts.length) return;
+      const temp = state.contacts[realIdx];
+      state.contacts[realIdx] = state.contacts[targetIdx];
+      state.contacts[targetIdx] = temp;
+      saveState();
+      renderContactsView();
+    }
+
+    function renderMyInfoBanner() {
+      const container = document.getElementById("myInfoBannerContent");
+      const emp = state.employees.find(e => e.name === state.currentUser) || state.employees[0];
+      if (!emp) return;
+
+      const refDateStr = document.getElementById("dashRefDateInput")?.value || getMonthEndStr(
+        Number(document.getElementById("calYear")?.value || 2026),
+        Number(document.getElementById("calMonth")?.value || 10)
+      );
+      const s = calcEmployeeLeave(emp, refDateStr);
+
+      const calYear = document.getElementById("calYear")?.value || "2026";
+      const calMonth = String(document.getElementById("calMonth")?.value || "10").padStart(2, "0");
+      const ymPrefix = `${calYear}-${calMonth}`;
+      const myMonthLeaves = state.leaves.filter(l => l.name === emp.name && l.date.startsWith(ymPrefix) && l.status === "승인완료");
+
+      const cycleBadge = emp.leaveExempt
+        ? `<span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/30 font-semibold">연차제외 대상</span>`
+        : (s.isOver1Yr
+            ? `<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-bold" title="${s.cycleStartStr} ~ ${s.cycleEndDisplayStr}">${s.cycleNumber}주기</span>`
+            : `<span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/30 font-bold" title="${emp.joinDate} ~ ${s.cycleEndDisplayStr}">1년미만</span>`);
+
+      container.innerHTML = `
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded bg-blue-600 text-white font-bold font-mono">${emp.id}</span>
+          <span class="text-sm font-bold text-white">${emp.name} <span class="text-slate-300 font-normal">${emp.dept || '임원'} · ${emp.role}</span></span>
+        </div>
+        <div class="h-3.5 w-[1px] bg-slate-700 hidden sm:block"></div>
+        <div class="text-slate-300">입사일: <strong class="font-mono text-white">${emp.joinDate}</strong> (${s.tenureText})</div>
+        <div>${cycleBadge}</div>
+        <div class="h-3.5 w-[1px] bg-slate-700 hidden sm:block"></div>
+        ${emp.leaveExempt ? `<div class="text-amber-300 font-semibold">임원/약사 연차산정 제외 계정 (관리 및 열람 전용)</div>` : `
+          <div class="flex items-center gap-2 bg-slate-900/90 px-3 py-1 rounded-lg border border-blue-500/40">
+            <span class="text-slate-300">이번주기 발생 <strong class="text-white">${s.isOver1Yr ? s.over1YrGen : s.under1YrGen}일</strong></span>
+            <span class="text-slate-500">|</span>
+            <span class="text-slate-300">사용 <strong class="text-amber-300">${s.isOver1Yr ? s.over1YrUsed : s.under1YrUsed}일</strong></span>
+            <span class="text-slate-500">|</span>
+            <span class="text-blue-200 font-semibold">유효 잔여연차: <strong class="text-sm font-extrabold text-amber-400">${s.currentValidRemain}일</strong></span>
+          </div>
+          <div class="text-slate-300 hidden xl:block">
+            ${calMonth}월 내 휴가: <strong class="text-white">${myMonthLeaves.length ? myMonthLeaves.map(l => `${l.date.slice(8)}일(${l.type})`).join(", ") : "없음"}</strong>
+          </div>
+        `}
+      `;
+    }
+
+    function handleGlobalSearch() {
+      const val = document.getElementById("globalEmpSearch").value.trim();
+      state.globalSearchQuery = val;
+      const clearBtn = document.getElementById("clearSearchBtn");
+      if (val) clearBtn.classList.remove("hidden");
+      else clearBtn.classList.add("hidden");
+      renderCalendarView();
+      renderDashboardView();
+    }
+
+    function clearGlobalSearch() {
+      document.getElementById("globalEmpSearch").value = "";
+      state.globalSearchQuery = "";
+      document.getElementById("clearSearchBtn").classList.add("hidden");
+      renderCalendarView();
+      renderDashboardView();
+    }
+
+    function toggleOnlyMeFilter() {
+      state.onlyMeFilter = !state.onlyMeFilter;
+      const btn = document.getElementById("onlyMeToggleBtn");
+      const txt = document.getElementById("onlyMeBtnText");
+      if (state.onlyMeFilter) {
+        btn.className = "px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold border border-blue-400 shadow-xs transition flex items-center gap-1 whitespace-nowrap";
+        txt.textContent = `내 정보만 보기 ON (${state.currentUser})`;
+      } else {
+        btn.className = "px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold border border-slate-600 transition flex items-center gap-1 whitespace-nowrap";
+        txt.textContent = "내 정보만 보기 OFF";
+      }
+      renderCalendarView();
+      renderDashboardView();
+    }
+
+    function matchesGlobalFilter(emp) {
+      if (state.onlyMeFilter && emp.name !== state.currentUser) return false;
+      if (state.globalSearchQuery) {
+        const q = state.globalSearchQuery.toLowerCase();
+        const match = (emp.name || "").toLowerCase().includes(q) ||
+                      (emp.dept || "").toLowerCase().includes(q) ||
+                      (emp.id || "").toLowerCase().includes(q) ||
+                      (emp.role || "").toLowerCase().includes(q);
+        if (!match) return false;
+      }
+      return true;
+    }
+
+    function changeCalendarMonth(delta) {
+      let y = Number(document.getElementById("calYear").value);
+      let m = Number(document.getElementById("calMonth").value) + delta;
+      if (m < 1) { m = 12; y = Math.max(YEAR_START, y - 1); }
+      if (m > 12) { m = 1; y = Math.min(YEAR_END, y + 1); }
+      document.getElementById("calYear").value = String(y);
+      document.getElementById("calMonth").value = String(m);
+      syncYearMonthFromCalendar();
+    }
+
+    function syncYearMonthFromCalendar() {
+      const y = Number(document.getElementById("calYear").value);
+      const m = Number(document.getElementById("calMonth").value);
+      document.getElementById("dashQuickYear").value = String(y);
+      document.getElementById("dashQuickMonth").value = String(m);
+      document.getElementById("dashRefDateInput").value = getMonthEndStr(y, m);
+      document.getElementById("laborYear").value = String(y);
+      document.getElementById("laborMonth").value = String(m);
+      renderMyInfoBanner();
+      renderCalendarView();
+      renderDashboardView();
+      renderLaborView();
+    }
+
+    function renderCalendarLegend() {
+      const el = document.getElementById("calendarLegendContainer");
+      if (!el) return;
+      el.innerHTML = state.leaveTypes.map(lt => {
+        const c = getColorClasses(lt.color);
+        return `<span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded ${c.dot} inline-block"></span>${lt.name}(${lt.days})</span>`;
+      }).join("") + `<span class="inline-flex items-center gap-1"><span class="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-700 font-bold text-[10px]">주기갱신</span>입사기념일 초기화</span>`;
+    }
+
+    function renderCalendarView() {
+      renderCalendarLegend();
+      const year = Number(document.getElementById("calYear").value);
+      const month = Number(document.getElementById("calMonth").value);
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+
+      const ymPrefix = `${year}-${String(month).padStart(2, "0")}`;
+      const monthStartStr = `${ymPrefix}-01`;
+      const monthEndStr = getMonthEndStr(year, month);
+
+      document.getElementById("calRefExplain").innerHTML =
+        `* 선택한 <strong>${year}년 ${month}월 말일(<span class="font-mono text-blue-600">${monthEndStr}</span>)</strong> 기준으로 매년 입사기념일(1주기·2주기·3주기...) 연차 초기화 및 월차 발생이 자동 계산됩니다.`;
+
+      const monthHolidays = state.holidays.filter(h => h.date.startsWith(ymPrefix));
+      const holidayMap = {};
+      monthHolidays.forEach(h => { holidayMap[h.date] = h.name; });
+
+      document.getElementById("kpiMonthHolidaysCount").textContent = `${monthHolidays.length}일`;
+      document.getElementById("kpiMonthHolidaysList").textContent = monthHolidays.length
+        ? monthHolidays.map(h => `${h.date.slice(8)}일(${h.name})`).join(", ")
+        : "해당 월 공휴일 없음";
+
+      const badgeContainer = document.getElementById("calendarHolidayBadges");
+      badgeContainer.innerHTML = monthHolidays.map(h =>
+        `<span class="px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 border border-rose-200 font-semibold">휴일: ${h.date.slice(5)} ${h.name}</span>`
+      ).join("");
+
+      const baseActiveEmps = state.employees.filter(e => !e.leaveExempt && (!e.resignDate || e.resignDate >= monthStartStr));
+      const visibleEmps = baseActiveEmps.filter(e => matchesGlobalFilter(e));
+      document.getElementById("kpiActiveCount").textContent = `연차관리 대상 ${baseActiveEmps.length}명`;
+
+      const annivEmps = baseActiveEmps.filter(e => {
+        const s = calcEmployeeLeave(e, monthEndStr);
+        return s.isOver1Yr && s.cycleStartStr.startsWith(ymPrefix);
+      });
+      document.getElementById("kpiAnnivCount").textContent = `${annivEmps.length}명`;
+      document.getElementById("kpiAnnivNames").textContent = annivEmps.length
+        ? annivEmps.map(e => {
+            const s = calcEmployeeLeave(e, monthEndStr);
+            return `${e.name}(${s.cycleNumber}주기·${s.over1YrGen}개)`;
+          }).join(", ")
+        : "이달 주기갱신 도래자 없음";
+
+      const monthApproved = state.leaves.filter(l => l.date.startsWith(ymPrefix) && l.status === "승인완료");
+      const monthDaysSum = monthApproved.reduce((s, l) => s + Number(l.days || 0), 0);
+      document.getElementById("kpiMonthTotalDays").textContent = `${monthDaysSum}일`;
+      document.getElementById("kpiMonthTotalCases").textContent = `총 ${monthApproved.length}건 승인됨`;
+
+      let headHtml = `<tr>
+        <th class="py-2.5 px-2 text-left sticky-col-1 bg-slate-800 min-w-[82px]">위치/사번</th>
+        <th class="py-2.5 px-2.5 text-left sticky-col-2 bg-slate-800 min-w-[92px]">성함</th>
+        <th class="py-2.5 px-2.5 text-right sticky-col-3 bg-slate-800 min-w-[95px] border-r border-slate-700">${month}월말 잔여</th>`;
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${ymPrefix}-${String(d).padStart(2, "0")}`;
+        const dow = new Date(year, month - 1, d).getDay();
+        const isHol = Boolean(holidayMap[dateStr]);
+        const isSun = dow === 0;
+        const isSat = dow === 6;
+        const isToday = dateStr === TODAY_STR;
+
+        let thCls = "bg-slate-800 text-slate-200";
+        if (isToday) thCls = "bg-amber-500 text-slate-950 font-bold";
+        else if (isHol || isSun) thCls = "bg-rose-900/90 text-rose-100";
+        else if (isSat) thCls = "bg-blue-900/80 text-blue-100";
+
+        headHtml += `<th class="py-2 px-1.5 text-center min-w-[44px] border-l border-slate-700/60 ${thCls}" title="${holidayMap[dateStr] || ''}">
+          <div class="text-[11px] font-bold">${d}</div>
+          <div class="text-[10px] opacity-80">${dayNames[dow]}</div>
+        </th>`;
+      }
+      headHtml += `</tr>`;
+      document.getElementById("matrixCalendarHead").innerHTML = headHtml;
+
+      let bodyHtml = "";
+      visibleEmps.forEach((emp, idx) => {
+        const stats = calcEmployeeLeave(emp, monthEndStr);
+        const isAnnivMonth = stats.isOver1Yr && stats.cycleStartStr.startsWith(ymPrefix);
+        const isMe = emp.name === state.currentUser;
+        const rowBg = isMe ? "bg-blue-50/90" : (idx % 2 === 0 ? "bg-white" : "bg-slate-50/70");
+
+        bodyHtml += `<tr class="${rowBg} hover:bg-blue-100/40 transition">
+          <td class="py-2 px-2 font-mono text-slate-500 sticky-col-1">
+            <div class="inline-flex items-center gap-1">
+              <div class="flex flex-col text-[9px] leading-none text-slate-400">
+                <button onclick="moveVisibleEmployee('${emp.id}', '${emp.name}', -1, visibleCalEmps)" class="hover:text-blue-600" title="위로 이동">▲</button>
+                <button onclick="moveVisibleEmployee('${emp.id}', '${emp.name}', 1, visibleCalEmps)" class="hover:text-blue-600" title="아래로 이동">▼</button>
+              </div>
+              <span class="${isMe ? 'font-bold text-blue-700' : ''}">${emp.id}</span>
+            </div>
+          </td>
+          <td class="py-2.5 px-2.5 font-bold text-slate-800 sticky-col-2">
+            ${isMe ? '<i class="fa-solid fa-star text-amber-400 text-[10px] mr-0.5"></i>' : ''}${emp.name} <span class="text-[10px] font-normal text-slate-500">${emp.role}</span>
+          </td>
+          <td class="py-2.5 px-2.5 font-bold text-right sticky-col-3 border-r border-slate-200 ${stats.currentValidRemain < 0 ? 'text-rose-600' : 'text-blue-600'}">
+            ${isAnnivMonth ? `<span class="px-1 py-0.2 rounded bg-emerald-100 text-emerald-700 text-[9px] font-bold mr-0.5" title="${stats.cycleNumber}주기(${stats.cycleStartStr}) ${stats.over1YrGen}일 새로 발생">${stats.cycleNumber}주기</span>` : ''}
+            ${stats.currentValidRemain}일
+          </td>`;
+
+        for (let d = 1; d <= daysInMonth; d++) {
+          const dateStr = `${ymPrefix}-${String(d).padStart(2, "0")}`;
+          const dow = new Date(year, month - 1, d).getDay();
+          const isHol = Boolean(holidayMap[dateStr]);
+          const isWeekend = dow === 0 || dow === 6;
+          const isEmpCycleRenewalDay = stats.isOver1Yr && dateStr === stats.cycleStartStr;
+
+          const dayLeaves = state.leaves.filter(l => l.name === emp.name && l.date === dateStr && l.status === "승인완료");
+
+          let cellBg = "";
+          if (dateStr === TODAY_STR) cellBg = "bg-amber-50/70";
+          else if (isHol || isWeekend) cellBg = "bg-rose-50/60";
+
+          let badgeHtml = "";
+          if (isEmpCycleRenewalDay) {
+            badgeHtml += `<div class="px-1 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 mb-0.5" title="입사 ${stats.cycleNumber}주기 (${stats.over1YrGen}일 신규초기화)">🎉${stats.cycleNumber}주기</div>`;
+          }
+          if (dayLeaves.length > 0) {
+            badgeHtml += dayLeaves.map(l => {
+              const ltObj = state.leaveTypes.find(x => x.name === l.type);
+              let bCls = "bg-blue-600 text-white";
+              let shortLabel = l.type.slice(0, 2);
+              if (ltObj) {
+                bCls = getColorClasses(ltObj.color).bg;
+                shortLabel = ltObj.short || ltObj.name.slice(0, 2);
+              } else if (l.type.includes("오전")) { bCls = "bg-sky-400 text-white"; shortLabel = "오전"; }
+              else if (l.type.includes("오후")) { bCls = "bg-sky-500 text-white"; shortLabel = "오후"; }
+              else if (l.type.includes("생일")) { bCls = "bg-pink-500 text-white"; shortLabel = "생일"; }
+              else if (l.type.includes("예비군") || l.type.includes("대체") || l.type.includes("경조")) {
+                bCls = "bg-emerald-500 text-white";
+                shortLabel = l.type.slice(0, 2);
+              }
+              return `<div class="px-1 py-0.5 rounded text-[10px] font-bold leading-tight ${bCls} shadow-xs mb-0.5" title="${l.type} (${l.reason || '사유없음'})">${shortLabel}</div>`;
+            }).join("");
+          }
+
+          bodyHtml += `<td class="p-1 text-center border-l border-slate-100 ${cellBg}">${badgeHtml}</td>`;
+        }
+        bodyHtml += `</tr>`;
+      });
+      window.visibleCalEmps = visibleEmps;
+      document.getElementById("matrixCalendarBody").innerHTML = bodyHtml;
+    }
+
+    function applyDashQuickMonth() {
+      const y = Number(document.getElementById("dashQuickYear").value);
+      const m = Number(document.getElementById("dashQuickMonth").value);
+      document.getElementById("dashRefDateInput").value = getMonthEndStr(y, m);
+      renderMyInfoBanner();
+      renderDashboardView();
+    }
+
+    function renderDashboardView() {
+      const refDateStr = document.getElementById("dashRefDateInput").value || TODAY_STR;
+      const showResigned = document.getElementById("showResignedToggle").checked;
+      const showExempt = document.getElementById("showExemptToggle").checked;
+
+      const list = state.employees.filter(e =>
+        (showResigned || !e.resignDate) &&
+        (showExempt || !e.leaveExempt) &&
+        matchesGlobalFilter(e)
+      );
+      window.visibleDashEmps = list;
+
+      const tbody = document.getElementById("dashboardTableBody");
+      tbody.innerHTML = list.map(emp => {
+        const realIdx = state.employees.findIndex(x => x.id === emp.id && x.name === emp.name);
+        const s = calcEmployeeLeave(emp, refDateStr);
+        const isMe = emp.name === state.currentUser;
+        let trCls = isMe ? "bg-blue-50/80 hover:bg-blue-100/60" : "bg-white hover:bg-slate-50";
+        if (s.isResigned) trCls = "bg-slate-100 text-slate-400 line-through";
+        else if (emp.leaveExempt) trCls = "bg-amber-50/40 text-slate-500";
+
+        const remainCls = s.currentValidRemain < 0 ? "text-rose-600 font-extrabold" : "text-blue-700 font-extrabold";
+
+        const cycleInfoHtml = emp.leaveExempt
+          ? `<span class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">제외대상</span>`
+          : (s.isOver1Yr
+              ? `<span class="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold cursor-help" title="갱신주기: ${s.cycleStartStr} ~ ${s.cycleEndDisplayStr}">${s.cycleNumber}주기</span>`
+              : `<span class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold cursor-help" title="1년미만 기간: ${emp.joinDate} ~ ${s.cycleEndDisplayStr}">1년미만</span>`);
+
+        return `<tr class="${trCls}" draggable="true"
+                    ondragstart="handleDragStart(event, ${realIdx})"
+                    ondragover="handleDragOver(event)"
+                    ondragleave="handleDragLeave(event)"
+                    ondrop="handleDrop(event, ${realIdx})"
+                    ondragend="handleDragEnd(event)">
+          <td class="py-3 px-3 text-center">
+            <div class="inline-flex items-center gap-1.5 text-slate-400">
+              <span class="cursor-grab hover:text-slate-700" title="드래그하여 순서 변경"><i class="fa-solid fa-grip-lines"></i></span>
+              <button onclick="moveVisibleEmployee('${emp.id}', '${emp.name}', -1, visibleDashEmps)" class="hover:text-blue-600 px-1" title="위로">▲</button>
+              <button onclick="moveVisibleEmployee('${emp.id}', '${emp.name}', 1, visibleDashEmps)" class="hover:text-blue-600 px-1" title="아래로">▼</button>
+            </div>
+          </td>
+          <td class="py-3 px-3 font-mono ${isMe ? 'font-bold text-blue-700' : ''}">${emp.id}</td>
+          <td class="py-3 px-4 font-bold text-slate-900">
+            <div class="inline-flex items-center gap-1.5">
+              ${isMe ? '<span class="px-1.5 py-0.5 rounded bg-blue-600 text-white text-[10px] font-bold">나</span>' : ''}
+              <span>${emp.name}</span>
+              ${emp.isAdminRole ? '<i class="fa-solid fa-crown text-amber-500 text-[11px]" title="지정 관리자"></i>' : ''}
+            </div>
+          </td>
+          <td class="py-3 px-4">${emp.dept}</td>
+          <td class="py-3 px-3">${emp.role}</td>
+          <td class="py-3 px-4 font-mono">${emp.joinDate}</td>
+          <td class="py-3 px-3 text-center">${cycleInfoHtml}</td>
+          <td class="py-3 px-4">${s.tenureText}</td>
+          <td class="py-3 px-3 text-right font-mono">${emp.leaveExempt ? '-' : `${s.under1YrGen} / <strong>${s.under1YrRemain}</strong>`}</td>
+          <td class="py-3 px-3 text-right font-semibold">${emp.leaveExempt ? '-' : (s.isOver1Yr ? `${s.over1YrGen}일` : '0일')}</td>
+          <td class="py-3 px-3 text-right font-semibold text-amber-700">
+            ${emp.leaveExempt ? '-' : (s.isOver1Yr ? `${s.over1YrUsed}일` : `${s.under1YrUsed}일`)}
+            ${s.under1YrOveruseCarry < 0 && s.cycleNumber === 1 ? `<span class="text-[10px] text-rose-500 ml-1">(초과${s.under1YrOveruseCarry})</span>` : ''}
+          </td>
+          <td class="py-3 px-4 text-right bg-blue-50/60 ${remainCls}">${emp.leaveExempt ? '<span class="text-xs text-slate-400 font-normal">제외</span>' : `${s.currentValidRemain}일`}</td>
+          <td class="py-3 px-3 text-center">
+            ${emp.leaveExempt
+              ? `<span class="px-2.5 py-0.5 rounded-full text-[11px] bg-amber-100 text-amber-800 font-semibold">연차제외</span>`
+              : (s.isResigned
+                  ? `<span class="px-2.5 py-0.5 rounded-full text-[11px] bg-slate-200 text-slate-600">퇴사 (${emp.resignDate})</span>`
+                  : `<span class="px-2.5 py-0.5 rounded-full text-[11px] bg-emerald-100 text-emerald-700 font-semibold">재직</span>`)}
+          </td>
+          <td class="py-3 px-3 text-center">
+            <button onclick="openEmpHistoryModal('${emp.name}')" class="px-3 py-1 rounded-lg bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-700 text-xs font-semibold transition">
+              이력보기
+            </button>
+          </td>
+        </tr>`;
+      }).join("");
+    }
+
+    function openEmpHistoryModal(empName) {
+      if (!empName) return;
+      const emp = state.employees.find(e => e.name === empName);
+      if (!emp) return;
+      const refDateStr = document.getElementById("dashRefDateInput").value || TODAY_STR;
+      const s = calcEmployeeLeave(emp, refDateStr);
+      document.getElementById("empHistModalTitle").textContent = `${emp.name} (${emp.dept}·${emp.role}) 휴가 사용 상세이력`;
+      document.getElementById("empHistModalSub").textContent =
+        `입사일: ${emp.joinDate} | 현재 주기(${s.isOver1Yr ? s.cycleNumber + '주기' : '1년미만'}): ${s.cycleStartStr} ~ ${s.cycleEndDisplayStr} | 유효 잔여연차: ${s.currentValidRemain}일`;
+
+      const empLeaves = state.leaves
+        .filter(l => l.name === empName)
+        .sort((a, b) => b.date.localeCompare(a.date));
+
+      const tbody = document.getElementById("empHistModalBody");
+      if (empLeaves.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-400">사용 내역이 없습니다.</td></tr>`;
+      } else {
+        tbody.innerHTML = empLeaves.map(l => {
+          let periodLabel = "";
+          if (l.date < s.firstAnnivStr) {
+            const isCur = !s.isOver1Yr;
+            periodLabel = `<span class="px-2 py-0.5 rounded ${isCur ? 'bg-amber-100 text-amber-800 font-bold' : 'bg-slate-100 text-slate-500'}">1년미만 ${isCur ? '(현재)' : '(종료/초기화)'}</span>`;
+          } else {
+            const isCurrentCycle = l.date >= s.cycleStartStr && l.date < s.nextCycleStartStr;
+            const cycNum = Math.floor(datedifMonths(emp.joinDate, l.date) / 12);
+            periodLabel = isCurrentCycle
+              ? `<span class="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">${cycNum}주기 (현재 차감)</span>`
+              : `<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-500">${cycNum}주기 (초기화됨)</span>`;
+          }
+          return `<tr>
+            <td class="py-2 px-3 font-mono">${l.date}</td>
+            <td class="py-2 px-3 font-semibold">${l.type}</td>
+            <td class="py-2 px-3 text-right font-bold">${l.days}일</td>
+            <td class="py-2 px-3">${periodLabel}</td>
+            <td class="py-2 px-3 text-slate-500">${l.reason || '-'}</td>
+          </tr>`;
+        }).join("");
+      }
+      const modal = document.getElementById("empHistoryModal");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    }
+
+    function closeEmpHistoryModal() {
+      const modal = document.getElementById("empHistoryModal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+
+    function populateLeaveTypeSelect() {
+      const sel = document.getElementById("reqType");
+      if (!sel) return;
+      const curVal = sel.value;
+      sel.innerHTML = state.leaveTypes.map(lt =>
+        `<option value="${lt.name}" ${lt.name === curVal ? 'selected' : ''}>${lt.name} (${lt.days}일 차감)</option>`
+      ).join("");
+      updateReqDeduction();
+    }
+
+    function openLeaveTypeModal() {
+      renderLeaveTypeTable();
+      const modal = document.getElementById("leaveTypeModal");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    }
+
+    function closeLeaveTypeModal() {
+      const modal = document.getElementById("leaveTypeModal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+
+    function renderLeaveTypeTable() {
+      const tbody = document.getElementById("leaveTypeTableBody");
+      tbody.innerHTML = state.leaveTypes.map((lt, idx) => {
+        const c = getColorClasses(lt.color);
+        return `<tr class="hover:bg-slate-50">
+          <td class="py-2 px-3 font-bold text-slate-800">${lt.name}</td>
+          <td class="py-2 px-3 text-right font-mono font-bold text-blue-600">${lt.days}일</td>
+          <td class="py-2 px-3 text-center"><span class="px-2 py-0.5 rounded text-[11px] font-bold ${c.bg}">${lt.short || lt.name.slice(0,2)}</span></td>
+          <td class="py-2 px-3 text-center">
+            ${idx < 3 ? `<span class="text-[10px] text-slate-400">기본</span>` : `<button onclick="deleteCustomLeaveType(${idx})" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash-can"></i></button>`}
+          </td>
+        </tr>`;
+      }).join("");
+    }
+
+    function addCustomLeaveType(e) {
+      e.preventDefault();
+      const name = document.getElementById("newLtName").value.trim();
+      const days = parseFloat(document.getElementById("newLtDays").value || "0");
+      const color = document.getElementById("newLtColor").value;
+      if (!name) return;
+      if (state.leaveTypes.some(x => x.name === name)) {
+        alert("이미 동일한 이름의 휴가 구분이 존재합니다.");
+        return;
+      }
+      state.leaveTypes.push({
+        name,
+        days,
+        color,
+        short: name.slice(0, 2)
+      });
+      document.getElementById("newLtName").value = "";
+      saveState();
+      populateLeaveTypeSelect();
+      renderLeaveTypeTable();
+      renderCalendarLegend();
+    }
+
+    function deleteCustomLeaveType(idx) {
+      if (!confirm("해당 휴가 구분을 삭제하시겠습니까?")) return;
+      state.leaveTypes.splice(idx, 1);
+      saveState();
+      populateLeaveTypeSelect();
+      renderLeaveTypeTable();
+      renderCalendarLegend();
+    }
+
+    function changeMiniCal(delta) {
+      state.miniCalMonth += delta;
+      if (state.miniCalMonth < 1) { state.miniCalMonth = 12; state.miniCalYear -= 1; }
+      if (state.miniCalMonth > 12) { state.miniCalMonth = 1; state.miniCalYear += 1; }
+      renderMiniCalendar();
+    }
+
+    function renderMiniCalendar() {
+      const y = state.miniCalYear;
+      const m = state.miniCalMonth;
+      document.getElementById("miniCalTitle").textContent = `${y}년 ${m}월`;
+
+      const firstDow = new Date(y, m - 1, 1).getDay();
+      const daysInMonth = new Date(y, m, 0).getDate();
+      const ymPrefix = `${y}-${String(m).padStart(2, "0")}`;
+
+      const holSet = new Set(state.holidays.filter(h => h.date.startsWith(ymPrefix)).map(h => h.date));
+      const selSet = new Set(state.selectedDates);
+
+      let html = "";
+      for (let i = 0; i < firstDow; i++) {
+        html += `<div class="p-1.5"></div>`;
+      }
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${ymPrefix}-${String(d).padStart(2, "0")}`;
+        const dow = new Date(y, m - 1, d).getDay();
+        const isSelected = selSet.has(dateStr);
+        const isHol = holSet.has(dateStr);
+
+        let cls = "hover:bg-blue-100 text-slate-700";
+        if (isSelected) cls = "bg-blue-600 text-white font-bold shadow-xs ring-2 ring-blue-300";
+        else if (isHol || dow === 0) cls = "text-rose-600 bg-rose-50 font-semibold";
+        else if (dow === 6) cls = "text-blue-600 bg-blue-50/50";
+
+        html += `<button type="button" onclick="toggleMiniCalDate('${dateStr}')" class="py-1.5 rounded-lg transition ${cls}">${d}</button>`;
+      }
+      document.getElementById("miniCalGrid").innerHTML = html;
+      renderSelectedDatesChips();
+    }
+
+    function toggleMiniCalDate(dateStr) {
+      const idx = state.selectedDates.indexOf(dateStr);
+      if (idx >= 0) {
+        state.selectedDates.splice(idx, 1);
+      } else {
+        state.selectedDates.push(dateStr);
+        state.selectedDates.sort();
+      }
+      updateReqMyRemain();
+      updateReqDeduction();
+      renderMiniCalendar();
+    }
+
+    function addDirectDateToSelection() {
+      const val = document.getElementById("reqDirectDateInput").value;
+      if (!val) return;
+      if (!state.selectedDates.includes(val)) {
+        state.selectedDates.push(val);
+        state.selectedDates.sort();
+      }
+      const [y, m] = val.split("-").map(Number);
+      state.miniCalYear = y;
+      state.miniCalMonth = m;
+      updateReqMyRemain();
+      updateReqDeduction();
+      renderMiniCalendar();
+    }
+
+    function removeSelectedDate(dateStr) {
+      state.selectedDates = state.selectedDates.filter(d => d !== dateStr);
+      updateReqDeduction();
+      renderMiniCalendar();
+    }
+
+    function clearSelectedDates() {
+      state.selectedDates = [];
+      updateReqDeduction();
+      renderMiniCalendar();
+    }
+
+    function renderSelectedDatesChips() {
+      const container = document.getElementById("selectedDatesChipContainer");
+      const countEl = document.getElementById("selectedDateCount");
+      countEl.textContent = state.selectedDates.length;
+
+      if (state.selectedDates.length === 0) {
+        container.innerHTML = `<span class="text-xs text-rose-500 font-medium">달력에서 1개 이상의 날짜를 클릭해 선택해주세요.</span>`;
+        return;
+      }
+
+      container.innerHTML = state.selectedDates.map(d => `
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-mono font-bold shadow-xs">
+          <span>${d}</span>
+          <button type="button" onclick="removeSelectedDate('${d}')" class="hover:text-rose-200"><i class="fa-solid fa-xmark"></i></button>
+        </span>
+      `).join("");
+    }
+
+    function updateReqMyRemain() {
+      const empName = document.getElementById("reqEmpName").value || state.currentUser;
+      const emp = state.employees.find(e => e.name === empName);
+      if (!emp) return;
+      const refDateVal = state.selectedDates[0] || TODAY_STR;
+      const [ry, rm] = refDateVal.split("-").map(Number);
+      const refEnd = getMonthEndStr(ry, rm);
+      const s = calcEmployeeLeave(emp, refEnd);
+      document.getElementById("reqMyRemainDays").textContent = `${s.currentValidRemain} 일`;
+    }
+
+    function updateReqDeduction() {
+      const typeName = document.getElementById("reqType").value;
+      const lt = state.leaveTypes.find(x => x.name === typeName);
+      const unitDays = lt ? Number(lt.days) : 0;
+      const count = state.selectedDates.length;
+      const totalDays = unitDays * count;
+
+      document.getElementById("reqDays").value = `${unitDays}일 × ${count}일 = 총 ${totalDays}일`;
+      const sumEl = document.getElementById("totalDeductionSummary");
+      if (sumEl) {
+        sumEl.textContent = `총 ${totalDays}일 차감 예정 (${unitDays}일 × ${count}일)`;
+      }
+    }
+
+    function submitLeaveRequest(e) {
+      e.preventDefault();
+      if (state.selectedDates.length === 0) {
+        alert("달력에서 신청할 날짜를 1일 이상 선택해주세요.");
+        return;
+      }
+      const name = document.getElementById("reqEmpName").value || state.currentUser;
+      const emp = state.employees.find(x => x.name === name);
+      const type = document.getElementById("reqType").value;
+      const lt = state.leaveTypes.find(x => x.name === type);
+      const unitDays = lt ? Number(lt.days) : 0;
+      const reason = document.getElementById("reqReason").value.trim();
+
+      state.selectedDates.forEach((dStr, idx) => {
+        state.leaves.unshift({
+          id: "REQ_" + Date.now() + "_" + idx,
+          date: dStr,
+          name,
+          dept: emp ? emp.dept : "",
+          type,
+          days: unitDays,
+          reason,
+          status: "승인대기"
+        });
+      });
+
+      const submittedCount = state.selectedDates.length;
+      document.getElementById("reqReason").value = "";
+      saveState();
+      refreshAllViews();
+      alert(`[${name}] 님의 휴가 신청 ${submittedCount}건(${state.selectedDates.join(", ")})이 결재 대기열에 상신되었습니다.`);
+    }
+
+    function updatePendingBadge() {
+      const pendingCount = state.leaves.filter(l => l.status === "승인대기").length;
+      const badge = document.getElementById("pendingBadge");
+      if (pendingCount > 0) {
+        badge.textContent = pendingCount;
+        badge.classList.remove("hidden");
+      } else {
+        badge.classList.add("hidden");
+      }
+    }
+
+    function approveLeave(idx, newStatus) {
+      if (!state.isAdmin) {
+        alert("지정 관리자 계정으로 로그인해야 결재 처리가 가능합니다.");
+        return;
+      }
+      const pendingList = state.leaves.filter(l => l.status === "승인대기");
+      const target = pendingList[idx];
+      if (!target) return;
+      target.status = newStatus;
+      saveState();
+      refreshAllViews();
+    }
+
+    function deleteLeaveRecord(realIdx) {
+      if (!state.isAdmin) return;
+      if (!confirm("해당 휴가 기록을 삭제하시겠습니까?")) return;
+      state.leaves.splice(realIdx, 1);
+      saveState();
+      refreshAllViews();
+    }
+
+    function renderRequestView() {
+      populateLeaveTypeSelect();
+      updateReqMyRemain();
+      renderMiniCalendar();
+      updatePendingBadge();
+
+      const pendingList = state.leaves.filter(l => l.status === "승인대기");
+      const pBody = document.getElementById("pendingTableBody");
+      if (pendingList.length === 0) {
+        pBody.innerHTML = `<tr><td colspan="8" class="py-6 text-center text-slate-400">현재 결재 대기 중인 휴가 신청 건이 없습니다.</td></tr>`;
+      } else {
+        pBody.innerHTML = pendingList.map((l, idx) => `
+          <tr class="bg-amber-50/40">
+            <td class="py-2.5 px-3 font-mono font-semibold">${l.date}</td>
+            <td class="py-2.5 px-3 font-bold">${l.name}</td>
+            <td class="py-2.5 px-3">${l.dept}</td>
+            <td class="py-2.5 px-3 font-semibold text-blue-700">${l.type}</td>
+            <td class="py-2.5 px-3 text-right font-bold">${l.days}일</td>
+            <td class="py-2.5 px-3 text-slate-600">${l.reason || '-'}</td>
+            <td class="py-2.5 px-3 text-center"><span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[11px]">승인대기</span></td>
+            <td class="py-2.5 px-3 text-center">
+              ${state.isAdmin ? `
+                <div class="flex items-center justify-center gap-1">
+                  <button onclick="approveLeave(${idx}, '승인완료')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold text-[11px]">승인</button>
+                  <button onclick="approveLeave(${idx}, '반려')" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded font-bold text-[11px]">반려</button>
+                </div>
+              ` : `<span class="text-[11px] text-slate-400">지정 관리자 승인대기</span>`}
+            </td>
+          </tr>
+        `).join("");
+      }
+
+      const empFilter = document.getElementById("historyFilterEmp").value;
+      const yearFilter = document.getElementById("historyFilterYear").value;
+      const monthFilter = document.getElementById("historyFilterMonth").value;
+
+      const filtered = state.leaves
+        .map((item, realIdx) => ({ ...item, realIdx }))
+        .filter(l => {
+          if (empFilter !== "ALL" && l.name !== empFilter) return false;
+          if (yearFilter !== "ALL" && !l.date.startsWith(yearFilter + "-")) return false;
+          if (monthFilter !== "ALL" && l.date.slice(5, 7) !== monthFilter) return false;
+          return true;
+        })
+        .sort((a, b) => b.date.localeCompare(a.date));
+
+      const hBody = document.getElementById("historyTableBody");
+      hBody.innerHTML = filtered.map(l => {
+        let stBadge = `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold text-[11px]">승인완료</span>`;
+        if (l.status === "승인대기") stBadge = `<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold text-[11px]">승인대기</span>`;
+        if (l.status === "반려") stBadge = `<span class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-semibold text-[11px]">반려됨</span>`;
+
+        return `<tr class="hover:bg-slate-50">
+          <td class="py-2 px-3 font-mono">${l.date}</td>
+          <td class="py-2 px-3 font-bold">${l.name}</td>
+          <td class="py-2 px-3">${l.dept}</td>
+          <td class="py-2 px-3 font-semibold">${l.type}</td>
+          <td class="py-2 px-3 text-right font-bold">${l.days}</td>
+          <td class="py-2 px-3 text-slate-500">${l.reason || '-'}</td>
+          <td class="py-2 px-3 text-center">${stBadge}</td>
+          <td class="py-2 px-3 text-center admin-col ${state.isAdmin ? '' : 'hidden'}">
+            <button onclick="deleteLeaveRecord(${l.realIdx})" class="text-rose-500 hover:text-rose-700 text-xs"><i class="fa-solid fa-trash-can"></i></button>
+          </td>
+        </tr>`;
+      }).join("");
+    }
+
+    function renderWelfareView() {
+      const grid = document.getElementById("welfareCardsGrid");
+      grid.innerHTML = state.welfare.map((w, idx) => `
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <div class="w-10 h-10 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center text-lg">
+                <i class="fa-solid ${w.icon || 'fa-gift'}"></i>
+              </div>
+              <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">${w.badge}</span>
+            </div>
+            <h4 class="text-base font-bold text-slate-800 mt-3">${w.title}</h4>
+            <p class="text-xs text-slate-500 mt-1 leading-relaxed allow-wrap">${w.desc}</p>
+          </div>
+          ${state.isAdmin ? `
+            <div class="mt-4 pt-2.5 border-t border-slate-100 flex justify-end gap-2 text-xs">
+              <button onclick="openWelfareModal(${idx})" class="px-2.5 py-1 rounded bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-700 font-semibold">수정</button>
+              <button onclick="deleteWelfare(${idx})" class="px-2.5 py-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-600 font-semibold">삭제</button>
+            </div>
+          ` : ''}
+        </div>
+      `).join("");
+
+      const selMonth = document.getElementById("bdayHighlightMonth").value || "10";
+      const monthBdays = state.birthdays.filter(b => b.date.startsWith(selMonth + "-"));
+      const bdayListEl = document.getElementById("thisMonthBirthdaysList");
+      if (monthBdays.length === 0) {
+        bdayListEl.innerHTML = `<div class="bg-white/10 px-3.5 py-3 rounded-xl text-xs text-pink-100 text-center">해당 월에는 등록된 생일자가 없습니다.</div>`;
+      } else {
+        bdayListEl.innerHTML = monthBdays.map(b => `
+          <div class="bg-white/15 backdrop-blur-xs px-3.5 py-2.5 rounded-xl flex items-center justify-between">
+            <div>
+              <span class="font-bold text-sm">${b.name} ${b.role}</span>
+              <span class="text-xs text-pink-100 ml-1">(${b.dept})</span>
+            </div>
+            <span class="text-xs font-mono font-bold bg-white text-rose-600 px-2 py-0.5 rounded">${b.date}</span>
+          </div>
+        `).join("");
+      }
+
+      const sortedBdays = state.birthdays.map((b, idx) => ({ ...b, idx })).sort((a, b) => a.date.localeCompare(b.date));
+      const allGrid = document.getElementById("allBirthdaysGrid");
+      allGrid.innerHTML = sortedBdays.map(b => {
+        const isTargetMonth = b.date.startsWith(selMonth + "-");
+        return `<div class="p-3 rounded-xl border ${isTargetMonth ? 'border-pink-300 bg-pink-50/50' : 'border-slate-200 bg-slate-50/50'} flex items-center justify-between">
+          <div>
+            <div class="text-xs font-bold text-slate-800">${b.name} <span class="font-normal text-slate-500">${b.role} · ${b.dept}</span></div>
+            <div class="text-[11px] text-slate-400 font-mono mt-0.5">생일: ${b.date} ${b.fullDate ? `(${b.fullDate})` : ''}</div>
+          </div>
+          <div class="flex items-center gap-1">
+            ${isTargetMonth ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-pink-500 text-white font-bold">이달생일</span>` : ''}
+            ${state.isAdmin ? `
+              <button onclick="openBirthdayModal(${b.idx})" class="p-1 text-slate-500 hover:text-blue-600" title="수정"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
+              <button onclick="deleteBirthday(${b.idx})" class="p-1 text-slate-400 hover:text-rose-600" title="삭제"><i class="fa-solid fa-trash-can text-xs"></i></button>
+            ` : ''}
+          </div>
+        </div>`;
+      }).join("");
+    }
+
+    function openWelfareModal(idx = -1) {
+      if (!state.isAdmin) return;
+      document.getElementById("editWelfareIdx").value = idx;
+      if (idx >= 0) {
+        const w = state.welfare[idx];
+        document.getElementById("welfareModalTitle").textContent = "복지 제도 수정";
+        document.getElementById("editWelfareTitle").value = w.title;
+        document.getElementById("editWelfareBadge").value = w.badge;
+        document.getElementById("editWelfareIcon").value = w.icon || "fa-gift";
+        document.getElementById("editWelfareDesc").value = w.desc;
+      } else {
+        document.getElementById("welfareModalTitle").textContent = "신규 복지 제도 추가";
+        document.getElementById("editWelfareTitle").value = "";
+        document.getElementById("editWelfareBadge").value = "복지지원";
+        document.getElementById("editWelfareIcon").value = "fa-gift";
+        document.getElementById("editWelfareDesc").value = "";
+      }
+      const modal = document.getElementById("welfareModal");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    }
+
+    function closeWelfareModal() {
+      const modal = document.getElementById("welfareModal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+
+    function saveWelfareModal(e) {
+      e.preventDefault();
+      const idx = Number(document.getElementById("editWelfareIdx").value);
+      const item = {
+        id: Date.now(),
+        title: document.getElementById("editWelfareTitle").value.trim(),
+        badge: document.getElementById("editWelfareBadge").value.trim(),
+        icon: document.getElementById("editWelfareIcon").value,
+        desc: document.getElementById("editWelfareDesc").value.trim()
+      };
+      if (idx >= 0) state.welfare[idx] = item;
+      else state.welfare.push(item);
+      saveState();
+      closeWelfareModal();
+      renderWelfareView();
+    }
+
+    function deleteWelfare(idx) {
+      if (!confirm("해당 복지 항목을 삭제하시겠습니까?")) return;
+      state.welfare.splice(idx, 1);
+      saveState();
+      renderWelfareView();
+    }
+
+    function openBirthdayModal(idx = -1) {
+      if (!state.isAdmin) return;
+      document.getElementById("editBdayIdx").value = idx;
+      if (idx >= 0) {
+        const b = state.birthdays[idx];
+        document.getElementById("birthdayModalTitle").textContent = `생일자 정보 수정 (${b.name})`;
+        document.getElementById("editBdayName").value = b.name;
+        document.getElementById("editBdayDept").value = b.dept;
+        document.getElementById("editBdayRole").value = b.role;
+        document.getElementById("editBdayFullDate").value = b.fullDate || `1995-${b.date}`;
+      } else {
+        document.getElementById("birthdayModalTitle").textContent = "신규 생일자 등록";
+        document.getElementById("editBdayName").value = "";
+        document.getElementById("editBdayDept").value = "물류팀";
+        document.getElementById("editBdayRole").value = "주임";
+        document.getElementById("editBdayFullDate").value = "1995-01-01";
+      }
+      const modal = document.getElementById("birthdayModal");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    }
+
+    function closeBirthdayModal() {
+      const modal = document.getElementById("birthdayModal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+
+    function saveBirthdayModal(e) {
+      e.preventDefault();
+      const idx = Number(document.getElementById("editBdayIdx").value);
+      const fullDate = document.getElementById("editBdayFullDate").value;
+      const mmdd = fullDate.slice(5);
+      const obj = {
+        no: state.birthdays.length + 1,
+        name: document.getElementById("editBdayName").value.trim(),
+        dept: document.getElementById("editBdayDept").value.trim(),
+        role: document.getElementById("editBdayRole").value.trim(),
+        date: mmdd,
+        fullDate
+      };
+      if (idx >= 0) state.birthdays[idx] = obj;
+      else state.birthdays.push(obj);
+      saveState();
+      closeBirthdayModal();
+      renderWelfareView();
+    }
+
+    function deleteBirthday(idx) {
+      if (!confirm("해당 생일자 정보를 삭제하시겠습니까?")) return;
+      state.birthdays.splice(idx, 1);
+      saveState();
+      renderWelfareView();
+    }
+
+    function renderContactsView() {
+      const q = (document.getElementById("contactSearchInput").value || "").trim().toLowerCase();
+      const showResigned = document.getElementById("contactShowResigned").checked;
+
+      const filtered = state.contacts
+        .map((c, realIdx) => ({ ...c, realIdx }))
+        .filter(c =>
+          (showResigned || !c.resignDate) && (
+            (c.name || "").toLowerCase().includes(q) ||
+            (c.dept || "").toLowerCase().includes(q) ||
+            (c.phone || "").toLowerCase().includes(q) ||
+            (c.role || "").toLowerCase().includes(q) ||
+            (c.address || "").toLowerCase().includes(q)
+          )
+        );
+
+      const tbody = document.getElementById("contactsTableBody");
+      tbody.innerHTML = filtered.map(c => `
+        <tr class="hover:bg-slate-50 ${c.resignDate ? 'bg-slate-100 text-slate-400 line-through' : ''}">
+          <td class="py-2.5 px-3 text-center">
+            <button onclick="moveContactOrder(${c.realIdx}, -1)" class="text-slate-400 hover:text-blue-600 px-0.5">▲</button>
+            <button onclick="moveContactOrder(${c.realIdx}, 1)" class="text-slate-400 hover:text-blue-600 px-0.5">▼</button>
+          </td>
+          <td class="py-3 px-4 font-mono text-xs text-slate-500">${c.id}</td>
+          <td class="py-3 px-4 font-bold text-slate-900">${c.name}</td>
+          <td class="py-3 px-4">${c.dept || '-'}</td>
+          <td class="py-3 px-4">${c.role || '-'}</td>
+          <td class="py-3 px-4 font-mono font-semibold text-blue-600">${c.phone || '-'}</td>
+          <td class="py-3 px-4 font-mono text-xs">${c.birth || '-'}</td>
+          <td class="py-3 px-4 font-mono text-xs">${c.joinDate || '-'}</td>
+          <td class="py-3 px-4 text-xs text-slate-600">${c.address} ${c.note ? `<span class="ml-1 px-1.5 py-0.5 bg-slate-100 rounded text-slate-700 font-medium">${c.note}</span>` : ''}</td>
+          <td class="py-3 px-4 text-center admin-col ${state.isAdmin ? '' : 'hidden'}">
+            <button onclick="openContactModal(${c.realIdx})" class="px-2 py-1 bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-700 rounded text-xs font-semibold mr-1">수정</button>
+            <button onclick="deleteContact(${c.realIdx})" class="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded text-xs font-semibold">삭제</button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function openContactModal(idx = -1) {
+      if (!state.isAdmin) return;
+      document.getElementById("editContactIdx").value = idx;
+      if (idx >= 0) {
+        const c = state.contacts[idx];
+        document.getElementById("contactModalTitle").textContent = `연락처 수정 (${c.name})`;
+        document.getElementById("editContactId").value = c.id;
+        document.getElementById("editContactName").value = c.name;
+        document.getElementById("editContactDept").value = c.dept;
+        document.getElementById("editContactRole").value = c.role;
+        document.getElementById("editContactPhone").value = c.phone;
+        document.getElementById("editContactBirth").value = c.birth;
+        document.getElementById("editContactJoin").value = c.joinDate;
+        document.getElementById("editContactResign").value = c.resignDate || "";
+        document.getElementById("editContactAddr").value = c.address;
+        document.getElementById("editContactNote").value = c.note;
+      } else {
+        document.getElementById("contactModalTitle").textContent = "신규 비상연락처 추가";
+        document.getElementById("editContactId").value = "UAN" + String(state.employees.length + 1).padStart(2, "0");
+        document.getElementById("editContactName").value = "";
+        document.getElementById("editContactDept").value = "";
+        document.getElementById("editContactRole").value = "";
+        document.getElementById("editContactPhone").value = "";
+        document.getElementById("editContactBirth").value = "";
+        document.getElementById("editContactJoin").value = TODAY_STR;
+        document.getElementById("editContactResign").value = "";
+        document.getElementById("editContactAddr").value = "";
+        document.getElementById("editContactNote").value = "";
+      }
+      const modal = document.getElementById("contactModal");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    }
+
+    function closeContactModal() {
+      const modal = document.getElementById("contactModal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+
+    function saveContactModal(e) {
+      e.preventDefault();
+      const idx = Number(document.getElementById("editContactIdx").value);
+      const obj = {
+        id: document.getElementById("editContactId").value.trim(),
+        name: document.getElementById("editContactName").value.trim(),
+        dept: document.getElementById("editContactDept").value.trim(),
+        role: document.getElementById("editContactRole").value.trim(),
+        phone: document.getElementById("editContactPhone").value.trim(),
+        birth: document.getElementById("editContactBirth").value,
+        joinDate: document.getElementById("editContactJoin").value,
+        resignDate: document.getElementById("editContactResign").value,
+        address: document.getElementById("editContactAddr").value.trim(),
+        note: document.getElementById("editContactNote").value.trim()
+      };
+      if (idx >= 0) state.contacts[idx] = obj;
+      else state.contacts.push(obj);
+      saveState();
+      closeContactModal();
+      renderContactsView();
+    }
+
+    function deleteContact(idx) {
+      if (!confirm("해당 연락처 정보를 삭제하시겠습니까?")) return;
+      state.contacts.splice(idx, 1);
+      saveState();
+      renderContactsView();
+    }
+
+    function countNetworkDays(startDateStr, endDateStr, holidaySet) {
+      const s = parseDate(startDateStr);
+      const e = parseDate(endDateStr);
+      if (!s || !e || s > e) return 0;
+      let count = 0;
+      const cur = new Date(s.getTime());
+      while (cur <= e) {
+        const dow = cur.getDay();
+        const dStr = formatDate(cur);
+        if (dow !== 0 && dow !== 6 && !holidaySet.has(dStr)) {
+          count++;
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+      return count;
+    }
+
+    function renderLaborView() {
+      const y = Number(document.getElementById("laborYear").value);
+      const m = Number(document.getElementById("laborMonth").value);
+      const ymPrefix = `${y}-${String(m).padStart(2, "0")}`;
+      const monthStart = `${ymPrefix}-01`;
+      const monthEnd = getMonthEndStr(y, m);
+
+      const holSet = new Set(state.holidays.map(h => h.date));
+
+      const activeForMonth = state.employees.filter(emp => {
+        if (emp.leaveExempt) return false;
+        if (emp.joinDate > monthEnd) return false;
+        if (emp.resignDate && emp.resignDate < monthStart) return false;
+        return true;
+      });
+
+      const tbody = document.getElementById("laborTableBody");
+      tbody.innerHTML = activeForMonth.map(emp => {
+        const effStart = emp.joinDate > monthStart ? emp.joinDate : monthStart;
+        const effEnd = (emp.resignDate && emp.resignDate < monthEnd) ? emp.resignDate : monthEnd;
+        const workDays = countNetworkDays(effStart, effEnd, holSet);
+
+        const monthLeaves = state.leaves.filter(l => l.name === emp.name && l.status === "승인완료" && l.date >= monthStart && l.date <= monthEnd);
+        const monthUsed = monthLeaves.reduce((acc, cur) => acc + Number(cur.days || 0), 0);
+        const actualWorkDays = workDays - monthUsed;
+
+        const endStats = calcEmployeeLeave(emp, effEnd);
+
+        const notes = [];
+        if (emp.joinDate >= monthStart && emp.joinDate <= monthEnd) notes.push(`${emp.joinDate.slice(5)} 신규입사`);
+        if (emp.resignDate && emp.resignDate >= monthStart && emp.resignDate <= monthEnd) notes.push(`${emp.resignDate.slice(5)} 퇴사`);
+        if (endStats.isOver1Yr && endStats.cycleStartStr >= monthStart && endStats.cycleStartStr <= monthEnd) {
+          notes.push(`입사 ${endStats.cycleNumber}주기(${endStats.cycleStartStr.slice(5)}) ${endStats.over1YrGen}개 신규초기화${endStats.under1YrOveruseCarry < 0 && endStats.cycleNumber === 1 ? ` / ${Math.abs(endStats.under1YrOveruseCarry)}개 초과사용 차감` : ''}`);
+        }
+        monthLeaves.filter(l => l.days === 0).forEach(l => notes.push(`${l.date.slice(5)} ${l.type}`));
+
+        return `<tr class="hover:bg-slate-50">
+          <td class="py-3 px-4 font-mono">${emp.id}</td>
+          <td class="py-3 px-4 font-bold text-slate-900">${emp.name}</td>
+          <td class="py-3 px-4">${emp.dept}</td>
+          <td class="py-3 px-4">${emp.role}</td>
+          <td class="py-3 px-4 font-mono">${emp.joinDate}</td>
+          <td class="py-3 px-4 text-right font-semibold">${workDays}일</td>
+          <td class="py-3 px-4 text-right font-semibold text-blue-600">${monthUsed}일</td>
+          <td class="py-3 px-4 text-right font-extrabold bg-blue-50/60 text-slate-900">${actualWorkDays}일</td>
+          <td class="py-3 px-4 text-right font-bold ${endStats.currentValidRemain < 0 ? 'text-rose-600' : 'text-emerald-700'}">${endStats.currentValidRemain}일</td>
+          <td class="py-3 px-4 text-xs text-slate-500">${notes.join(" / ") || "-"}</td>
+        </tr>`;
+      }).join("");
+    }
+
+    function exportLaborCSV() {
+      const y = document.getElementById("laborYear").value;
+      const m = document.getElementById("laborMonth").value;
+      const rows = [["사번", "성함", "부서", "직함", "입사일자", "당월 총 소정근로일수", "당월 사용연차", "당월 실근무일수", "당월 말 잔여연차", "비고"]];
+      const trs = document.querySelectorAll("#laborTableBody tr");
+      trs.forEach(tr => {
+        const cols = Array.from(tr.querySelectorAll("td")).map(td => `"${td.innerText.replace(/일$/,'').trim()}"`);
+        rows.push(cols);
+      });
+      const csvContent = "\uFEFF" + rows.map(r => r.join(",")).join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `유안메디_노무법인제출_${y}년_${m}월.csv`;
+      a.click();
+    }
+
+    function toggleEmpExemptDirect(idx) {
+      state.employees[idx].leaveExempt = !state.employees[idx].leaveExempt;
+      saveState();
+      refreshAllViews();
+    }
+
+    function toggleEmpAdminRoleDirect(idx) {
+      const target = state.employees[idx];
+      if (target.name === state.currentUser && target.isAdminRole) {
+        if (!confirm("현재 접속 중인 본인 계정의 관리자 권한을 해제하시겠습니까? (해제 시 일반 직원 모드로 전환됩니다)")) {
+          renderAdminEmpView();
+          return;
+        }
+      }
+      target.isAdminRole = !target.isAdminRole;
+      syncAdminStatusByLoggedUser();
+      saveState();
+      refreshAllViews();
+    }
+
+    function renderAdminEmpView() {
+      const tbody = document.getElementById("adminEmpTableBody");
+      tbody.innerHTML = state.employees.map((emp, idx) => `
+        <tr class="hover:bg-slate-50 ${emp.leaveExempt ? 'bg-slate-50/80' : ''}"
+            draggable="true"
+            ondragstart="handleDragStart(event, ${idx})"
+            ondragover="handleDragOver(event)"
+            ondragleave="handleDragLeave(event)"
+            ondrop="handleDrop(event, ${idx})"
+            ondragend="handleDragEnd(event)">
+          <td class="py-2.5 px-2 text-center">
+            <span class="cursor-grab text-slate-400 hover:text-slate-700 mr-1"><i class="fa-solid fa-grip-lines"></i></span>
+            <button onclick="moveEmployeeOrder(${idx}, -1)" class="text-slate-400 hover:text-blue-600 px-0.5">▲</button>
+            <button onclick="moveEmployeeOrder(${idx}, 1)" class="text-slate-400 hover:text-blue-600 px-0.5">▼</button>
+          </td>
+          <td class="py-2.5 px-3 font-mono font-semibold">${emp.id}</td>
+          <td class="py-2.5 px-3 font-bold">${emp.name}</td>
+          <td class="py-2.5 px-3">${emp.dept} · <span class="text-slate-500">${emp.role}</span></td>
+          <td class="py-2.5 px-3 font-mono">${emp.joinDate}</td>
+          <td class="py-2.5 px-3 text-center font-mono text-blue-600 font-bold">${emp.pin || '0000'}</td>
+          <td class="py-2.5 px-3 text-center bg-amber-50/50">
+            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" ${emp.isAdminRole ? 'checked' : ''} onchange="toggleEmpAdminRoleDirect(${idx})" class="rounded text-amber-600 w-4 h-4" />
+              <span class="text-[11px] font-bold ${emp.isAdminRole ? 'text-amber-700' : 'text-slate-400'}">${emp.isAdminRole ? '👑 관리자' : '일반'}</span>
+            </label>
+          </td>
+          <td class="py-2.5 px-3 text-center">
+            <label class="inline-flex items-center gap-1 cursor-pointer">
+              <input type="checkbox" ${emp.leaveExempt ? 'checked' : ''} onchange="toggleEmpExemptDirect(${idx})" class="rounded text-slate-600 w-4 h-4" />
+              <span class="text-[11px] ${emp.leaveExempt ? 'font-bold text-slate-700' : 'text-slate-400'}">${emp.leaveExempt ? '제외' : '대상'}</span>
+            </label>
+          </td>
+          <td class="py-2.5 px-3 text-center">
+            ${emp.resignDate ? `<span class="px-2 py-0.5 rounded bg-slate-200 text-slate-600 text-[11px]">퇴사(${emp.resignDate})</span>` : `<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold text-[11px]">재직</span>`}
+          </td>
+          <td class="py-2.5 px-3 text-center">
+            <button onclick="openEmpModal(${idx})" class="px-2.5 py-1 bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-700 rounded text-xs font-semibold mr-1">수정</button>
+            <button onclick="deleteEmp(${idx})" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded text-xs font-semibold">삭제</button>
+          </td>
+        </tr>
+      `).join("");
+
+      const yearFilter = document.getElementById("adminHolYearFilter")?.value || "ALL";
+      const hBody = document.getElementById("adminHolidayTableBody");
+      const sortedHol = state.holidays
+        .map((h, i) => ({ ...h, idx: i }))
+        .filter(h => yearFilter === "ALL" || h.date.startsWith(yearFilter + "-"))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      hBody.innerHTML = sortedHol.map(h => `
+        <tr class="hover:bg-slate-50">
+          <td class="py-2 px-3 font-mono">${h.date}</td>
+          <td class="py-2 px-3 font-semibold text-slate-800">${h.name}</td>
+          <td class="py-2 px-3 text-center">
+            <button onclick="removeHoliday(${h.idx})" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash-can"></i></button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function generateStandardHolidaysForYear() {
+      const yearFilter = document.getElementById("adminHolYearFilter").value;
+      const targetYear = yearFilter === "ALL" ? prompt("기본 공휴일을 생성할 연도(예: 2027, 2028)를 입력하세요:", "2027") : yearFilter;
+      if (!targetYear || isNaN(Number(targetYear))) return;
+
+      const stdList = [
+        { date: `${targetYear}-01-01`, name: "신정(새해)" },
+        { date: `${targetYear}-03-01`, name: "삼일절" },
+        { date: `${targetYear}-05-01`, name: "근로자의 날(노동절)" },
+        { date: `${targetYear}-05-05`, name: "어린이날" },
+        { date: `${targetYear}-06-06`, name: "현충일" },
+        { date: `${targetYear}-08-15`, name: "광복절" },
+        { date: `${targetYear}-10-03`, name: "개천절" },
+        { date: `${targetYear}-10-09`, name: "한글날" },
+        { date: `${targetYear}-11-22`, name: "회사 창립기념일" },
+        { date: `${targetYear}-12-25`, name: "크리스마스(성탄절)" }
+      ];
+
+      if (targetYear === "2027") {
+        stdList.push(
+          { date: "2027-02-06", name: "설날 연휴" },
+          { date: "2027-02-07", name: "설날" },
+          { date: "2027-02-08", name: "설날 연휴" },
+          { date: "2027-02-09", name: "설날 대체공휴일" },
+          { date: "2027-05-13", name: "부처님오신날" },
+          { date: "2027-09-14", name: "추석 연휴" },
+          { date: "2027-09-15", name: "추석" },
+          { date: "2027-09-16", name: "추석 연휴" }
+        );
+      }
+
+      let addedCount = 0;
+      stdList.forEach(item => {
+        if (!state.holidays.some(h => h.date === item.date)) {
+          state.holidays.push(item);
+          addedCount++;
+        }
+      });
+      saveState();
+      refreshAllViews();
+      alert(`${targetYear}년도 기본 공휴일 및 창립기념일 ${addedCount}건이 자동 등록되었습니다.`);
+    }
+
+    function openEmpModal(idx = -1) {
+      document.getElementById("editEmpIndex").value = idx;
+      if (idx >= 0) {
+        const emp = state.employees[idx];
+        document.getElementById("empModalTitle").textContent = `직원 정보 수정 (${emp.name})`;
+        document.getElementById("editEmpId").value = emp.id;
+        document.getElementById("editEmpName").value = emp.name;
+        document.getElementById("editEmpDept").value = emp.dept;
+        document.getElementById("editEmpRole").value = emp.role;
+        document.getElementById("editEmpJoin").value = emp.joinDate;
+        document.getElementById("editEmpResign").value = emp.resignDate || "";
+        document.getElementById("editEmpPin").value = emp.pin || "0000";
+        document.getElementById("editEmpAdminRole").checked = Boolean(emp.isAdminRole);
+        document.getElementById("editEmpExempt").checked = Boolean(emp.leaveExempt);
+      } else {
+        document.getElementById("empModalTitle").textContent = "신규 직원 등록";
+        document.getElementById("editEmpId").value = "UAN" + String(state.employees.filter(e => !e.leaveExempt).length + 1).padStart(2, "0");
+        document.getElementById("editEmpName").value = "";
+        document.getElementById("editEmpDept").value = "물류팀";
+        document.getElementById("editEmpRole").value = "주임";
+        document.getElementById("editEmpJoin").value = TODAY_STR;
+        document.getElementById("editEmpResign").value = "";
+        document.getElementById("editEmpPin").value = "0000";
+        document.getElementById("editEmpAdminRole").checked = false;
+        document.getElementById("editEmpExempt").checked = false;
+      }
+      const modal = document.getElementById("empModal");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    }
+
+    function closeEmpModal() {
+      const modal = document.getElementById("empModal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+
+    function saveEmpModal(e) {
+      e.preventDefault();
+      const idx = Number(document.getElementById("editEmpIndex").value);
+      const empObj = {
+        id: document.getElementById("editEmpId").value.trim(),
+        name: document.getElementById("editEmpName").value.trim(),
+        dept: document.getElementById("editEmpDept").value.trim(),
+        role: document.getElementById("editEmpRole").value.trim(),
+        joinDate: document.getElementById("editEmpJoin").value,
+        resignDate: document.getElementById("editEmpResign").value,
+        pin: document.getElementById("editEmpPin").value.trim() || "0000",
+        isAdminRole: document.getElementById("editEmpAdminRole").checked,
+        leaveExempt: document.getElementById("editEmpExempt").checked
+      };
+      if (idx >= 0) {
+        state.employees[idx] = empObj;
+      } else {
+        state.employees.push(empObj);
+      }
+      saveState();
+      closeEmpModal();
+      refreshAllViews();
+    }
+
+    function deleteEmp(idx) {
+      if (!confirm("해당 직원을 명단에서 삭제하시겠습니까?")) return;
+      state.employees.splice(idx, 1);
+      saveState();
+      refreshAllViews();
+    }
+
+    function addHoliday(e) {
+      e.preventDefault();
+      const date = document.getElementById("newHolDate").value;
+      const name = document.getElementById("newHolName").value.trim();
+      state.holidays.push({ date, name });
+      document.getElementById("newHolDate").value = "";
+      document.getElementById("newHolName").value = "";
+      saveState();
+      refreshAllViews();
+    }
+
+    function removeHoliday(idx) {
+      state.holidays.splice(idx, 1);
+      saveState();
+      refreshAllViews();
+    }
+
+    function refreshAllViews() {
+      updateAdminUI();
+      renderMyInfoBanner();
+      renderCalendarView();
+      renderDashboardView();
+      renderRequestView();
+      renderWelfareView();
+      renderContactsView();
+      renderLaborView();
+      renderAdminEmpView();
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      populateYearSelects();
+      refreshAllViews();
+      openLoginModal();
+      loadStateAndListen();
+    });
+  </script>
+</body>
+</html>

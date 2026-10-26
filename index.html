@@ -43,7 +43,7 @@
         <button onclick="toggleLeftSidebar()" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center text-white transition" title="좌측 메뉴 열기/접기">
           <i class="fa-solid fa-bars text-base" id="sidebarToggleIcon"></i>
         </button>
-        <!-- 유안메디 공식 CI 로고 (벡터 내장 - 용량 최적화 및 선명도 유지) -->
+        <!-- 유안메디 공식 CI 로고 -->
         <div class="px-2.5 h-11 rounded-xl bg-white flex flex-col items-center justify-center shadow-md border border-slate-200/80 shrink-0 leading-none select-none">
           <svg viewBox="0 0 120 55" class="h-6 w-auto">
             <polygon points="12,5 30,5 42,32 24,32" fill="#0038c7"/>
@@ -542,7 +542,7 @@
         </div>
       </section>
 
-      <!-- 5. 임직원 비상연락망 -->
+      <!-- 5. 임직원 비상연락망 (주소는 관리자만 표시 / 비고는 분리) -->
       <section id="view-contacts" class="hidden space-y-5">
         <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -556,7 +556,7 @@
               <input type="checkbox" id="contactShowResigned" onchange="renderContactsView()" class="rounded text-blue-600" />
               <span>퇴사자 포함</span>
             </label>
-            <input type="text" id="contactSearchInput" oninput="renderContactsView()" placeholder="이름, 부서, 연락처 검색..." class="text-xs px-3 py-2 border border-slate-300 rounded-lg w-52" />
+            <input type="text" id="contactSearchInput" oninput="renderContactsView()" placeholder="이름, 부서, 연락처, 비고 검색..." class="text-xs px-3 py-2 border border-slate-300 rounded-lg w-52" />
             <button onclick="openContactModal(-1)" class="admin-col hidden px-3.5 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold rounded-lg shadow-xs">
               <i class="fa-solid fa-plus mr-1"></i>연락처 추가
             </button>
@@ -564,7 +564,7 @@
         </div>
 
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <div class="overflow-x-auto">
+          <div class="overflow-x-auto custom-scrollbar">
             <table class="w-full text-xs sm:text-sm text-left border-collapse">
               <thead class="bg-slate-800 text-white text-xs">
                 <tr>
@@ -576,7 +576,8 @@
                   <th class="py-3 px-4">연락처</th>
                   <th class="py-3 px-4">생년월일</th>
                   <th class="py-3 px-4">입사일자</th>
-                  <th class="py-3 px-4">주소 / 비고</th>
+                  <th class="py-3 px-4 admin-col hidden"><i class="fa-solid fa-lock text-amber-400 mr-1 text-[10px]"></i>주소 (관리자 전용)</th>
+                  <th class="py-3 px-4">비고</th>
                   <th class="py-3 px-4 text-center admin-col hidden">관리</th>
                 </tr>
               </thead>
@@ -642,7 +643,7 @@
               <div>
                 <span class="text-xs font-bold text-amber-600 uppercase">ADMIN & HR MASTER</span>
                 <h3 class="text-base font-bold text-slate-800">임직원 인사정보 · 관리자 선정(👑) · 연차제외 설정</h3>
-                <p class="text-xs text-slate-500 mt-0.5">아래 표에서 <strong>[👑 관리자 선정]</strong>에 체크된 직원이 본인 계정으로 로그인하면 관리자 권한이 자동 부여됩니다.</p>
+                <p class="text-xs text-slate-500 mt-0.5">아래 표에서 <strong>[👑 관리자 선정]</strong>에 체크하거나 <strong>[수정]</strong> 버튼에서 변경 후 저장하면 실시간으로 반영됩니다.</p>
               </div>
               <div class="flex items-center gap-2">
                 <button onclick="sortEmployees('id')" class="px-3 py-1.5 bg-slate-100 hover:bg-blue-100 text-slate-700 text-xs font-bold rounded-lg">
@@ -721,7 +722,7 @@
 
   <!-- ================= MODALS ================= -->
 
-  <!-- 1. Personal Account Login Modal (최초 접속 강제 로그인) -->
+  <!-- 1. Personal Account Login Modal -->
   <div id="loginModal" class="fixed inset-0 bg-slate-900/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
     <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-slate-200">
       <div class="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -1029,11 +1030,11 @@
           </div>
         </div>
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">자택 주소</label>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">자택 주소 (관리자 전용 열람)</label>
           <input type="text" id="editContactAddr" placeholder="주소 입력" class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
         </div>
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">비고 (내선번호 / 이메일 등)</label>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">비고 (입사일 특이사항 / 내선번호 / 이메일 등)</label>
           <input type="text" id="editContactNote" placeholder="비고 사항" class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
         </div>
         <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
@@ -1076,7 +1077,7 @@
     const INITIAL_EMPLOYEES = [{"id": "UAN00", "name": "손종진", "dept": "임원실", "role": "대표이사", "joinDate": "2024-01-01", "resignDate": "", "leaveExempt": true, "isAdminRole": true, "pin": "7776"}, {"id": "UAN00", "name": "최창조", "dept": "임원실", "role": "이사", "joinDate": "2024-01-01", "resignDate": "", "leaveExempt": true, "isAdminRole": true, "pin": "5310"}, {"id": "UAN00", "name": "서정이", "dept": "약무팀", "role": "약사", "joinDate": "2024-01-01", "resignDate": "", "leaveExempt": true, "isAdminRole": false, "pin": "6581"}, {"id": "UAN01", "name": "원종성", "dept": "영업팀", "role": "이사", "joinDate": "2024-01-10", "resignDate": "", "leaveExempt": false, "isAdminRole": true, "pin": "7313"}, {"id": "UAN02", "name": "홍승만", "dept": "영업지원팀", "role": "팀장", "joinDate": "2024-01-01", "resignDate": "", "leaveExempt": false, "isAdminRole": true, "pin": "6419"}, {"id": "UAN03", "name": "김화연", "dept": "물류팀", "role": "팀장", "joinDate": "2024-01-01", "resignDate": "2026-07-21", "leaveExempt": false, "isAdminRole": false, "pin": "0000"}, {"id": "UAN04", "name": "권광호", "dept": "물류팀", "role": "과장", "joinDate": "2024-01-01", "resignDate": "2026-04-30", "leaveExempt": false, "isAdminRole": false, "pin": "0000"}, {"id": "UAN05", "name": "정영진", "dept": "물류팀", "role": "팀장", "joinDate": "2025-01-02", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "8728"}, {"id": "UAN06", "name": "이재상", "dept": "물류팀", "role": "대리", "joinDate": "2025-05-07", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "5542"}, {"id": "UAN07", "name": "이주희", "dept": "마케팅", "role": "대리", "joinDate": "2025-04-28", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "8343"}, {"id": "UAN08", "name": "최슬기", "dept": "마케팅", "role": "대리", "joinDate": "2025-07-14", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "4318"}, {"id": "UAN09", "name": "김이한", "dept": "물류팀", "role": "대리", "joinDate": "2025-10-27", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "7379"}, {"id": "UAN10", "name": "박은진", "dept": "마케팅", "role": "대리", "joinDate": "2025-10-27", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "9133"}, {"id": "UAN11", "name": "김준혁", "dept": "물류팀", "role": "주임", "joinDate": "2026-04-13", "resignDate": "2026-05-29", "leaveExempt": false, "isAdminRole": false, "pin": "0000"}, {"id": "UAN12", "name": "안종현", "dept": "물류팀", "role": "주임", "joinDate": "2026-06-15", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "4451"}, {"id": "UAN13", "name": "휘민", "dept": "영업지원팀", "role": "주임", "joinDate": "2026-06-15", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "0295"}, {"id": "UAN14", "name": "신현지", "dept": "물류팀", "role": "주임", "joinDate": "2026-07-20", "resignDate": "2026-09-30", "leaveExempt": false, "isAdminRole": false, "pin": "1473"}, {"id": "UAN15", "name": "문영아", "dept": "물류팀", "role": "주임", "joinDate": "2026-08-01", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "6917"}, {"id": "UAN16", "name": "오은혜", "dept": "물류팀", "role": "대리", "joinDate": "2026-09-01", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "2830"}, {"id": "UAN17", "name": "신가희", "dept": "물류팀", "role": "팀장", "joinDate": "2026-10-06", "resignDate": "", "leaveExempt": false, "isAdminRole": false, "pin": "9147"}];
     const INITIAL_LEAVES = [{"date": "2026-01-02", "name": "원종성", "dept": "영업팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-02-05", "name": "원종성", "dept": "영업팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-02-06", "name": "원종성", "dept": "영업팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-03-12", "name": "원종성", "dept": "영업팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-03-13", "name": "원종성", "dept": "영업팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-04-17", "name": "원종성", "dept": "영업팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-04", "name": "원종성", "dept": "영업팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-02", "name": "홍승만", "dept": "영업지원팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-05", "name": "홍승만", "dept": "영업지원팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-06", "name": "홍승만", "dept": "영업지원팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-03-09", "name": "홍승만", "dept": "영업지원팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-04-03", "name": "홍승만", "dept": "영업지원팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-04", "name": "홍승만", "dept": "영업지원팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-06-11", "name": "홍승만", "dept": "영업지원팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-06-12", "name": "홍승만", "dept": "영업지원팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-07-10", "name": "홍승만", "dept": "영업지원팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-09-14", "name": "홍승만", "dept": "영업지원팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-02", "name": "김화연", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-03-03", "name": "김화연", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-03-20", "name": "김화연", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-04-03", "name": "김화연", "dept": "물류팀", "type": "오전반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-10", "name": "김화연", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-05-04", "name": "김화연", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-28", "name": "김화연", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-02", "name": "권광호", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-08", "name": "권광호", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-01-16", "name": "권광호", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-02-11", "name": "권광호", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-02-27", "name": "권광호", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-03-04", "name": "권광호", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-01", "name": "권광호", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-24", "name": "권광호", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-04-15", "name": "권광호", "dept": "물류팀", "type": "오전반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-17", "name": "권광호", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-23", "name": "권광호", "dept": "물류팀", "type": "오전반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-29", "name": "권광호", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-30", "name": "권광호", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-02", "name": "정영진", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-23", "name": "정영진", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-02-20", "name": "정영진", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-06", "name": "정영진", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-04-13", "name": "정영진", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-04", "name": "정영진", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-06-12", "name": "정영진", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-07-06", "name": "정영진", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-07-30", "name": "정영진", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-07-31", "name": "정영진", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-09-18", "name": "정영진", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-02", "name": "이주희", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-02-02", "name": "이주희", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-03-11", "name": "이주희", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-03-19", "name": "이주희", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-03-13", "name": "이주희", "dept": "마케팅", "type": "오전반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-01", "name": "이주희", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-04-17", "name": "이주희", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-05-04", "name": "이주희", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-18", "name": "이주희", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-19", "name": "이주희", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-12", "name": "이주희", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-06-02", "name": "이주희", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-06-09", "name": "이주희", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-07-01", "name": "이주희", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-07-29", "name": "이주희", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-07-30", "name": "이주희", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-09-01", "name": "이주희", "dept": "마케팅", "type": "오전반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-01-02", "name": "이재상", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-30", "name": "이재상", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-03-20", "name": "이재상", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-27", "name": "이재상", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-04-28", "name": "이재상", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-04", "name": "이재상", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-15", "name": "이재상", "dept": "물류팀", "type": "오전반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-06-26", "name": "이재상", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-06-29", "name": "이재상", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-07-24", "name": "이재상", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-08-28", "name": "이재상", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-08-19", "name": "이재상", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-01-02", "name": "최슬기", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-02-06", "name": "최슬기", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-02-09", "name": "최슬기", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-03-30", "name": "최슬기", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-04", "name": "최슬기", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-06-16", "name": "최슬기", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-07-10", "name": "최슬기", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-09-23", "name": "최슬기", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-01-02", "name": "김이한", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-02-06", "name": "김이한", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-02-27", "name": "김이한", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-04-01", "name": "김이한", "dept": "물류팀", "type": "오전반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-04-02", "name": "김이한", "dept": "물류팀", "type": "오전반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-05-04", "name": "김이한", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-11", "name": "김이한", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-06-18", "name": "김이한", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-06-22", "name": "김이한", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-09-16", "name": "김이한", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-09-17", "name": "김이한", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-02", "name": "박은진", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-03-30", "name": "박은진", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-04-13", "name": "박은진", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-04-20", "name": "박은진", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-04", "name": "박은진", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-06", "name": "박은진", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-06-02", "name": "박은진", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-06-30", "name": "박은진", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-05-04", "name": "김준혁", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-08-27", "name": "안종현", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-09-21", "name": "안종현", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-09-17", "name": "안종현", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-01-01", "name": "김이한", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "25년 사용분", "status": "승인완료"}, {"date": "2026-05-15", "name": "이재상", "dept": "물류팀", "type": "오전반차", "days": 0.5, "reason": "26년 5월 당겨 쓴 사용분", "status": "승인완료"}, {"date": "2026-04-29", "name": "이주희", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "26년 4월 당겨 쓴 사용분", "status": "승인완료"}, {"date": "2026-10-08", "name": "최슬기", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-10-16", "name": "최슬기", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-10-30", "name": "최슬기", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-10-26", "name": "이주희", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-10-26", "name": "이주희", "dept": "마케팅", "type": "생일반차(복지)", "days": 0.0, "reason": "생일 오전 반차", "status": "승인완료"}, {"date": "2026-10-02", "name": "박은진", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-10-19", "name": "박은진", "dept": "마케팅", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-10-21", "name": "박은진", "dept": "마케팅", "type": "오전반차", "days": 0.5, "reason": "", "status": "승인완료"}, {"date": "2026-10-21", "name": "박은진", "dept": "마케팅", "type": "생일반차(복지)", "days": 0.0, "reason": "생일 오후 반차", "status": "승인완료"}, {"date": "2026-10-02", "name": "문영아", "dept": "물류팀", "type": "생일반차(복지)", "days": 0.0, "reason": "생일 오후 반차", "status": "승인완료"}, {"date": "2026-10-08", "name": "문영아", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-09-28", "name": "최슬기", "dept": "마케팅", "type": "휴일대체", "days": 0.0, "reason": "", "status": "승인완료"}, {"date": "2026-10-02", "name": "원종성", "dept": "영업팀", "type": "연차", "days": 1.0, "reason": "병원진료", "status": "승인완료"}, {"date": "2026-10-19", "name": "이재상", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "", "status": "승인완료"}, {"date": "2026-09-30", "name": "안종현", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "A형 독감감염 격리", "status": "승인완료"}, {"date": "2026-10-01", "name": "안종현", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "A형 독감감염 격리", "status": "승인완료"}, {"date": "2026-10-16", "name": "김이한", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "병원진료", "status": "승인완료"}, {"date": "2026-10-06", "name": "김이한", "dept": "물류팀", "type": "오후반차", "days": 0.5, "reason": "병원진료", "status": "승인완료"}, {"date": "2026-10-15", "name": "안종현", "dept": "물류팀", "type": "예비군", "days": 0.0, "reason": "예비군 훈련", "status": "승인완료"}, {"date": "2026-10-08", "name": "안종현", "dept": "물류팀", "type": "오전반차", "days": 0.5, "reason": "병원진료", "status": "승인완료"}, {"date": "2026-10-30", "name": "신가희", "dept": "물류팀", "type": "연차", "days": 1.0, "reason": "이사", "status": "승인완료"}, {"date": "2026-10-16", "name": "박은진", "dept": "마케팅", "type": "오후반차", "days": 0.5, "reason": "개인 사유", "status": "승인완료"}];
     const INITIAL_HOLIDAYS = [{"date": "2026-01-01", "name": "새해"}, {"date": "2026-02-16", "name": "설날"}, {"date": "2026-02-17", "name": "설날"}, {"date": "2026-02-18", "name": "설날"}, {"date": "2026-03-02", "name": "삼일절(대체공휴일)"}, {"date": "2026-05-01", "name": "노동절"}, {"date": "2026-05-05", "name": "어린이날"}, {"date": "2026-05-25", "name": "부처님오신날(대체공휴일)"}, {"date": "2026-06-03", "name": "전국동시지방선거"}, {"date": "2026-06-06", "name": "현충일"}, {"date": "2026-08-17", "name": "광복절(대체공휴일)"}, {"date": "2026-09-24", "name": "추석"}, {"date": "2026-09-25", "name": "추석"}, {"date": "2026-09-26", "name": "추석"}, {"date": "2026-10-05", "name": "개천절(대체공휴일)"}, {"date": "2026-10-09", "name": "한글날"}, {"date": "2026-11-22", "name": "회사 창립일"}, {"date": "2026-12-25", "name": "크리스마스"}];
-    const INITIAL_CONTACTS = [{"id": "UAN00", "name": "손종진", "dept": "", "role": "대표이사", "birth": "1991-02-12", "joinDate": "", "resignDate": "", "phone": "010-3806-7776", "address": "서울시 강동구 고덕로 333 119동 1501호", "note": ""}, {"id": "UAN00", "name": "최창조", "dept": "", "role": "이사", "birth": "1991-05-31", "joinDate": "", "resignDate": "", "phone": "010-3351-5310", "address": "서울 동작구 본동 494, 래미안트윈파크 102동 2002호", "note": ""}, {"id": "UAN00", "name": "서정이", "dept": "", "role": "약사", "birth": "1952-03-03", "joinDate": "2024-01-01", "resignDate": "", "phone": "010-2770-6581", "address": "서울특별시 송파구 양산로 2길44, 거여3단지아파트 301동 110호", "note": ""}, {"id": "UAN00", "name": "도매 법인폰", "dept": "", "role": "", "birth": "", "joinDate": "", "resignDate": "", "phone": "010-3440-8444", "address": "경기도 하남시 덕풍로 65번길 22, 3층", "note": ""}, {"id": "UAN00", "name": "도매 법인폰2", "dept": "", "role": "", "birth": "", "joinDate": "", "resignDate": "", "phone": "010-5141-9444", "address": "경기도 하남시 덕풍로 65번길 22, 3층", "note": ""}, {"id": "UAN01", "name": "원종성", "dept": "영업팀", "role": "이사", "birth": "1969-01-03", "joinDate": "2024-01-10", "resignDate": "", "phone": "010-3743-7313", "address": "경기도 고양시 일산서구 가좌1로 10, 514동 2001호", "note": ""}, {"id": "UAN02", "name": "홍승만", "dept": "영업지원팀", "role": "팀장", "birth": "1991-02-12", "joinDate": "2024-01-01", "resignDate": "", "phone": "010-2713-6419", "address": "경기도 고양시 일산서구 강성로 62, 901동 301호", "note": ""}, {"id": "UAN03", "name": "김화연", "dept": "물류팀", "role": "팀장", "birth": "", "joinDate": "2024-01-01", "resignDate": "2026-07-21", "phone": "", "address": "", "note": ""}, {"id": "UAN04", "name": "권광호", "dept": "물류팀", "role": "과장", "birth": "", "joinDate": "2024-01-01", "resignDate": "2026-04-30", "phone": "", "address": "", "note": ""}, {"id": "UAN05", "name": "정영진", "dept": "물류팀", "role": "팀장", "birth": "1996-05-06", "joinDate": "2025-01-02", "resignDate": "", "phone": "010-4121-8728", "address": "경기도 하남시 덕풍동 415-18, 4층 502호", "note": ""}, {"id": "UAN06", "name": "이재상", "dept": "물류팀", "role": "대리", "birth": "1979-01-05", "joinDate": "2025-05-07", "resignDate": "", "phone": "010-5757-5542", "address": "경기도 구리시 수택동 549-6, 수택주공아파트 101동 1401호", "note": ""}, {"id": "UAN07", "name": "이주희", "dept": "마케팅", "role": "대리", "birth": "2000-10-26", "joinDate": "2025-04-28", "resignDate": "", "phone": "010-8455-8343", "address": "경기도 하남시 덕풍동로 60, 403동 1104호", "note": ""}, {"id": "UAN08", "name": "최슬기", "dept": "마케팅", "role": "대리", "birth": "1999-02-20", "joinDate": "2025-07-14", "resignDate": "", "phone": "010-9897-4318", "address": "서울특별시 강동구 성내동 46-19, 라움빌 402호", "note": ""}, {"id": "UAN09", "name": "김이한", "dept": "물류팀", "role": "대리", "birth": "1994-11-02", "joinDate": "2025-10-27", "resignDate": "", "phone": "010-6270-7379", "address": "경기도 하남시 미사강변동로 180, 1407동 2210호", "note": ""}, {"id": "UAN10", "name": "박은진", "dept": "마케팅", "role": "대리", "birth": "1999-10-21", "joinDate": "2025-10-27", "resignDate": "", "phone": "010-2054-9133", "address": "서울특별시 송파구 한가람로 478, 101동 604호", "note": ""}, {"id": "UAN11", "name": "김준혁", "dept": "물류팀", "role": "주임", "birth": "", "joinDate": "2026-04-13", "resignDate": "2026-05-29", "phone": "", "address": "", "note": ""}, {"id": "UAN12", "name": "안종현", "dept": "물류팀", "role": "주임", "birth": "1999-12-08", "joinDate": "2026-06-15", "resignDate": "", "phone": "010-6701-4451", "address": "서울특별시 강동구 상일로 74, 314동 1103호", "note": ""}, {"id": "UAN13", "name": "휘민", "dept": "영업지원팀", "role": "주임", "birth": "1995-02-01", "joinDate": "2026-06-15", "resignDate": "", "phone": "010-9226-0295", "address": "", "note": ""}, {"id": "UAN14", "name": "신현지", "dept": "물류팀", "role": "주임", "birth": "1999-04-19", "joinDate": "2026-07-20", "resignDate": "2026-09-30", "phone": "010-3574-1473", "address": "", "note": ""}, {"id": "UAN15", "name": "문영아", "dept": "물류팀", "role": "주임", "birth": "1998-10-04", "joinDate": "2026-08-01", "resignDate": "", "phone": "010-9289-6917", "address": "경기도 구리시 벌말로226, 토평주공아파트 505동 401호", "note": ""}, {"id": "UAN16", "name": "오은혜", "dept": "물류팀", "role": "대리", "birth": "1986-12-15", "joinDate": "2026-09-01", "resignDate": "", "phone": "010-9055-2830", "address": "경기도 성남시 성남대로 1194번길 3 밀란체3 302호", "note": ""}, {"id": "UAN17", "name": "신가희", "dept": "물류팀", "role": "팀장", "birth": "1991-04-07", "joinDate": "2026-10-06", "resignDate": "", "phone": "010-5160-9147", "address": "경기도 시흥시 황고개로469 1401동1003호 (장현 더포레마제)", "note": ""}];
+    const INITIAL_CONTACTS = [{"id": "UAN00", "name": "손종진", "dept": "", "role": "대표이사", "birth": "1991-02-12", "joinDate": "", "resignDate": "", "phone": "010-3806-7776", "address": "서울시 강동구 고덕로 333 119동 1501호", "note": ""}, {"id": "UAN00", "name": "최창조", "dept": "", "role": "이사", "birth": "1991-05-31", "joinDate": "", "resignDate": "", "phone": "010-3351-5310", "address": "서울 동작구 본동 494, 래미안트윈파크 102동 2002호", "note": ""}, {"id": "UAN00", "name": "서정이", "dept": "", "role": "약사", "birth": "1952-03-03", "joinDate": "2024-01-01", "resignDate": "", "phone": "010-2770-6581", "address": "서울특별시 송파구 양산로 2길44, 거여3단지아파트 301동 110호", "note": ""}, {"id": "UAN00", "name": "도매 법인폰", "dept": "", "role": "", "birth": "", "joinDate": "", "resignDate": "", "phone": "010-3440-8444", "address": "경기도 하남시 덕풍로 65번길 22, 3층", "note": ""}, {"id": "UAN00", "name": "도매 법인폰2", "dept": "", "role": "", "birth": "", "joinDate": "", "resignDate": "", "phone": "010-5141-9444", "address": "경기도 하남시 덕풍로 65번길 22, 3층", "note": ""}, {"id": "UAN01", "name": "원종성", "dept": "영업팀", "role": "이사", "birth": "1969-01-03", "joinDate": "2024-01-01", "resignDate": "", "phone": "010-3743-7313", "address": "경기도 고양시 일산서구 가좌1로 10, 514동 2001호", "note": "24년 1월 10일 입사 / 연차 관리 편의상 일자 수정"}, {"id": "UAN02", "name": "홍승만", "dept": "영업지원팀", "role": "팀장", "birth": "1991-02-12", "joinDate": "2024-01-01", "resignDate": "", "phone": "010-2713-6419", "address": "경기도 고양시 일산서구 강성로 62, 901동 301호", "note": ""}, {"id": "UAN03", "name": "김화연", "dept": "물류팀", "role": "팀장", "birth": "", "joinDate": "2024-01-01", "resignDate": "2026-07-21", "phone": "", "address": "", "note": ""}, {"id": "UAN04", "name": "권광호", "dept": "물류팀", "role": "과장", "birth": "", "joinDate": "2024-01-01", "resignDate": "2026-04-30", "phone": "", "address": "", "note": ""}, {"id": "UAN05", "name": "정영진", "dept": "물류팀", "role": "팀장", "birth": "1996-05-06", "joinDate": "2025-01-02", "resignDate": "", "phone": "010-4121-8728", "address": "경기도 하남시 덕풍동 415-18, 4층 502호", "note": ""}, {"id": "UAN06", "name": "이재상", "dept": "물류팀", "role": "대리", "birth": "1979-01-05", "joinDate": "2025-05-07", "resignDate": "", "phone": "010-5757-5542", "address": "경기도 구리시 수택동 549-6, 수택주공아파트 101동 1401호", "note": ""}, {"id": "UAN07", "name": "이주희", "dept": "마케팅", "role": "대리", "birth": "2000-10-26", "joinDate": "2025-04-28", "resignDate": "", "phone": "010-8455-8343", "address": "경기도 하남시 덕풍동로 60, 403동 1104호", "note": ""}, {"id": "UAN08", "name": "최슬기", "dept": "마케팅", "role": "대리", "birth": "1999-02-20", "joinDate": "2025-07-14", "resignDate": "", "phone": "010-9897-4318", "address": "서울특별시 강동구 성내동 46-19, 라움빌 402호", "note": ""}, {"id": "UAN09", "name": "김이한", "dept": "물류팀", "role": "대리", "birth": "1994-11-02", "joinDate": "2025-10-27", "resignDate": "", "phone": "010-6270-7379", "address": "경기도 하남시 미사강변동로 180, 1407동 2210호", "note": ""}, {"id": "UAN10", "name": "박은진", "dept": "마케팅", "role": "대리", "birth": "1999-10-21", "joinDate": "2025-10-27", "resignDate": "", "phone": "010-2054-9133", "address": "서울특별시 송파구 한가람로 478, 101동 604호", "note": ""}, {"id": "UAN11", "name": "김준혁", "dept": "물류팀", "role": "주임", "birth": "", "joinDate": "2026-04-13", "resignDate": "2026-05-29", "phone": "", "address": "", "note": ""}, {"id": "UAN12", "name": "안종현", "dept": "물류팀", "role": "주임", "birth": "1999-12-08", "joinDate": "2026-06-15", "resignDate": "", "phone": "010-6701-4451", "address": "서울특별시 강동구 상일로 74, 314동 1103호", "note": ""}, {"id": "UAN13", "name": "휘민", "dept": "영업지원팀", "role": "주임", "birth": "1995-02-01", "joinDate": "2026-06-15", "resignDate": "", "phone": "010-9226-0295", "address": "", "note": ""}, {"id": "UAN14", "name": "신현지", "dept": "물류팀", "role": "주임", "birth": "1999-04-19", "joinDate": "2026-07-20", "resignDate": "2026-09-30", "phone": "010-3574-1473", "address": "", "note": ""}, {"id": "UAN15", "name": "문영아", "dept": "물류팀", "role": "주임", "birth": "1998-10-04", "joinDate": "2026-08-01", "resignDate": "", "phone": "010-9289-6917", "address": "경기도 구리시 벌말로226, 토평주공아파트 505동 401호", "note": ""}, {"id": "UAN16", "name": "오은혜", "dept": "물류팀", "role": "대리", "birth": "1986-12-15", "joinDate": "2026-09-01", "resignDate": "", "phone": "010-9055-2830", "address": "경기도 성남시 성남대로 1194번길 3 밀란체3 302호", "note": ""}, {"id": "UAN17", "name": "신가희", "dept": "물류팀", "role": "팀장", "birth": "1991-04-07", "joinDate": "2026-10-06", "resignDate": "", "phone": "010-5160-9147", "address": "경기도 시흥시 황고개로469 1401동1003호 (장현 더포레마제)", "note": ""}];
     const INITIAL_WELFARE = [{"id": 1, "title": "창립기념일 휴무", "desc": "매년 11월 22일 전 임직원 유급 휴무", "icon": "fa-building-flag", "badge": "유급휴무"}, {"id": 2, "title": "생일 반차 지원", "desc": "생일 당월 오전 또는 오후 반차(0.5일) 별도 부여 (연차 미차감)", "icon": "fa-cake-candles", "badge": "복지휴가"}, {"id": 3, "title": "업무관련 교육비 지원", "desc": "직무 역량 강화를 위한 외부 교육, 세미나, 도서 구입비 지원", "icon": "fa-graduation-cap", "badge": "자기계발"}, {"id": 4, "title": "팀활동비 지원", "desc": "분기당 30만원 지원 (미사용 시 차기 분기 이월 가능)", "icon": "fa-people-group", "badge": "분기 30만원"}, {"id": 5, "title": "경조사 지원", "desc": "임직원 경조휴가 부여 및 경조금, 경조화환 지급", "icon": "fa-envelope-open-text", "badge": "경조지원"}];
     const INITIAL_BIRTHDAYS = [{"no": 1, "name": "원종성", "role": "이사", "dept": "영업팀", "date": "01-03", "fullDate": "1969-01-03"}, {"no": 2, "name": "이재상", "role": "대리", "dept": "물류팀", "date": "01-05", "fullDate": "1979-01-05"}, {"no": 3, "name": "휘민", "role": "주임", "dept": "영업지원팀", "date": "02-01", "fullDate": "1995-02-01"}, {"no": 4, "name": "홍승만", "role": "팀장", "dept": "영업지원팀", "date": "02-12", "fullDate": "1991-02-12"}, {"no": 5, "name": "최슬기", "role": "대리", "dept": "마케팅", "date": "02-20", "fullDate": "1999-02-20"}, {"no": 6, "name": "서정이", "role": "약사", "dept": "관리약사", "date": "03-03", "fullDate": "1952-03-03"}, {"no": 7, "name": "신가희", "role": "팀장", "dept": "물류팀", "date": "04-07", "fullDate": "1991-04-07"}, {"no": 8, "name": "정영진", "role": "팀장", "dept": "물류팀", "date": "05-06", "fullDate": "1996-05-06"}, {"no": 9, "name": "문영아", "role": "주임", "dept": "물류팀", "date": "10-04", "fullDate": "1998-10-04"}, {"no": 10, "name": "박은진", "role": "대리", "dept": "마케팅", "date": "10-21", "fullDate": "1999-10-21"}, {"no": 11, "name": "이주희", "role": "대리", "dept": "마케팅", "date": "10-26", "fullDate": "2000-10-26"}, {"no": 12, "name": "김이한", "role": "대리", "dept": "물류팀", "date": "11-02", "fullDate": "1994-11-02"}, {"no": 13, "name": "안종현", "role": "주임", "dept": "물류팀", "date": "12-08", "fullDate": "1999-12-08"}, {"no": 14, "name": "오은혜", "role": "대리", "dept": "물류팀", "date": "12-15", "fullDate": "1986-12-15"}];
     const INITIAL_LEAVE_TYPES = [{"name": "연차", "days": 1.0, "color": "blue", "short": "연차"}, {"name": "오전반차", "days": 0.5, "color": "sky", "short": "오전"}, {"name": "오후반차", "days": 0.5, "color": "sky", "short": "오후"}, {"name": "생일반차(복지)", "days": 0.0, "color": "pink", "short": "생일"}, {"name": "예비군", "days": 0.0, "color": "emerald", "short": "예비"}, {"name": "경조휴가", "days": 0.0, "color": "purple", "short": "경조"}, {"name": "휴일대체", "days": 0.0, "color": "amber", "short": "대체"}];
@@ -1162,54 +1163,111 @@
       }
     }
 
+    // 로컬 백업 불러오기 (Firebase 연결 전 또는 오프라인 대비)
+    function loadLocalBackup() {
+      const bEmp = localStorage.getItem("ym_backup_emp_v6");
+      const bLeaves = localStorage.getItem("ym_backup_leaves_v6");
+      const bHol = localStorage.getItem("ym_backup_hol_v6");
+      const bCon = localStorage.getItem("ym_backup_con_v6");
+      const bWel = localStorage.getItem("ym_backup_wel_v6");
+      const bBday = localStorage.getItem("ym_backup_bday_v6");
+      const bLt = localStorage.getItem("ym_backup_lt_v6");
+
+      if (bEmp) state.employees = JSON.parse(bEmp);
+      if (bLeaves) state.leaves = JSON.parse(bLeaves);
+      if (bHol) state.holidays = JSON.parse(bHol);
+      if (bCon) state.contacts = JSON.parse(bCon);
+      if (bWel) state.welfare = JSON.parse(bWel);
+      if (bBday) state.birthdays = JSON.parse(bBday);
+      if (bLt) state.leaveTypes = JSON.parse(bLt);
+    }
+
+    function saveLocalBackup() {
+      localStorage.setItem("ym_backup_emp_v6", JSON.stringify(state.employees));
+      localStorage.setItem("ym_backup_leaves_v6", JSON.stringify(state.leaves));
+      localStorage.setItem("ym_backup_hol_v6", JSON.stringify(state.holidays));
+      localStorage.setItem("ym_backup_con_v6", JSON.stringify(state.contacts));
+      localStorage.setItem("ym_backup_wel_v6", JSON.stringify(state.welfare));
+      localStorage.setItem("ym_backup_bday_v6", JSON.stringify(state.birthdays));
+      localStorage.setItem("ym_backup_lt_v6", JSON.stringify(state.leaveTypes));
+    }
+
+    function normalizeFirebaseArray(data, fallback) {
+      if (!data) return fallback;
+      if (Array.isArray(data)) return data.filter(Boolean);
+      return Object.values(data).filter(Boolean);
+    }
+
     function loadStateAndListen() {
+      loadLocalBackup();
+
       dbRef.on("value", (snapshot) => {
         const val = snapshot.val();
         if (val && val.employees) {
-          state.employees = val.employees;
-          state.leaves = val.leaves || [];
-          state.holidays = val.holidays || INITIAL_HOLIDAYS;
-          state.contacts = val.contacts || INITIAL_CONTACTS;
-          state.welfare = val.welfare || INITIAL_WELFARE;
-          state.birthdays = val.birthdays || INITIAL_BIRTHDAYS;
-          state.leaveTypes = val.leaveTypes || INITIAL_LEAVE_TYPES;
+          state.employees = normalizeFirebaseArray(val.employees, INITIAL_EMPLOYEES).map(e => ({
+            ...e,
+            isAdminRole: Boolean(e.isAdminRole),
+            leaveExempt: Boolean(e.leaveExempt)
+          }));
+          state.leaves = normalizeFirebaseArray(val.leaves, []);
+          state.holidays = normalizeFirebaseArray(val.holidays, INITIAL_HOLIDAYS);
+          state.contacts = normalizeFirebaseArray(val.contacts, INITIAL_CONTACTS);
+          state.welfare = normalizeFirebaseArray(val.welfare, INITIAL_WELFARE);
+          state.birthdays = normalizeFirebaseArray(val.birthdays, INITIAL_BIRTHDAYS);
+          state.leaveTypes = normalizeFirebaseArray(val.leaveTypes, INITIAL_LEAVE_TYPES);
+          saveLocalBackup();
         } else {
-          dbRef.set({
-            employees: state.employees,
-            leaves: state.leaves,
-            holidays: state.holidays,
-            contacts: state.contacts,
-            welfare: state.welfare,
-            birthdays: state.birthdays,
-            leaveTypes: state.leaveTypes
-          });
+          // 초기 DB 세팅
+          saveStateToFirebase();
         }
         state.isCloudSynced = true;
+
+        const badge = document.getElementById("cloudStatusBadge");
+        if (badge) {
+          badge.textContent = "실시간 연동됨";
+          badge.className = "text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-medium";
+        }
 
         const loggedUser = sessionStorage.getItem("ym_logged_user_v6");
         if (loggedUser && state.employees.some(e => e.name === loggedUser && !e.resignDate)) {
           state.currentUser = loggedUser;
           syncAdminStatusByLoggedUser();
           closeLoginModal();
-        } else {
+        } else if (!state.currentUser) {
           openLoginModal();
         }
 
         refreshAllViews();
+      }, (error) => {
+        console.error("Firebase 읽기 오류:", error);
+        const badge = document.getElementById("cloudStatusBadge");
+        if (badge) {
+          badge.textContent = "로컬 저장모드 (DB규칙 확인필요)";
+          badge.className = "text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 font-medium";
+        }
       });
     }
 
-    function saveState() {
-      if (!state.isCloudSynced) return;
-      dbRef.set({
-        employees: state.employees,
-        leaves: state.leaves,
-        holidays: state.holidays,
-        contacts: state.contacts,
-        welfare: state.welfare,
-        birthdays: state.birthdays,
-        leaveTypes: state.leaveTypes
+    function saveStateToFirebase() {
+      const payload = {
+        employees: JSON.parse(JSON.stringify(state.employees)),
+        leaves: JSON.parse(JSON.stringify(state.leaves)),
+        holidays: JSON.parse(JSON.stringify(state.holidays)),
+        contacts: JSON.parse(JSON.stringify(state.contacts)),
+        welfare: JSON.parse(JSON.stringify(state.welfare)),
+        birthdays: JSON.parse(JSON.stringify(state.birthdays)),
+        leaveTypes: JSON.parse(JSON.stringify(state.leaveTypes))
+      };
+      dbRef.set(payload).catch(err => {
+        console.error("Firebase 쓰기 오류:", err);
+        alert("클라우드 DB 저장 권한이 잠겨 있어 현재 기기에만 임시 저장되었습니다.\nFirebase 콘솔 > Realtime Database > [규칙(Rules)] 탭에서 .read와 .write를 true로 설정해 주세요.");
       });
+    }
+
+    // 언제든 수정 즉시 로컬 + Firebase 양쪽 모두에 저장되도록 보장!
+    function saveState() {
+      saveLocalBackup();
+      saveStateToFirebase();
       updatePendingBadge();
     }
 
@@ -1365,6 +1423,7 @@
       if (!state.currentUser) {
         headerBadge.innerHTML = `<span class="text-slate-400">로그인 필요</span>`;
         adminSidebar.classList.add("hidden");
+        document.querySelectorAll(".admin-col").forEach(el => el.classList.add("hidden"));
         return;
       }
 
@@ -1376,7 +1435,7 @@
         `;
         adminSidebar.classList.remove("hidden");
         sbRoleBadge.innerHTML = `<span class="px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-bold text-[10px]">👑 관리자</span>`;
-        sbRoleDesc.textContent = "지정 관리자 계정으로 접속 중입니다. 휴가 결재 승인/반려, 노무법인 정산, 직원 및 관리자 선정 권한이 활성화되어 있습니다.";
+        sbRoleDesc.textContent = "지정 관리자 계정으로 접속 중입니다. 휴가 결재 승인/반려, 노무법인 정산, 직원 주소 열람 및 인사 설정 권한이 활성화되어 있습니다.";
         if (hint) hint.innerHTML = `<span class="text-emerald-700 font-bold"><i class="fa-solid fa-crown mr-1 text-amber-500"></i>지정 관리자 권한(${emp.name}): 결재 승인/반려 및 전 직원 대리신청이 가능합니다.</span>`;
         document.querySelectorAll(".admin-col").forEach(el => el.classList.remove("hidden"));
       } else {
@@ -1387,7 +1446,7 @@
         `;
         adminSidebar.classList.add("hidden");
         sbRoleBadge.innerHTML = `<span class="px-2 py-0.5 rounded bg-slate-700 text-slate-300 font-bold text-[10px]">일반 직원</span>`;
-        sbRoleDesc.textContent = "일반 직원 계정으로 접속 중입니다. 본인 연차 신청 및 전체 근태 열람이 가능하며, 타인 정보는 임의로 입력할 수 없습니다.";
+        sbRoleDesc.textContent = "일반 직원 계정으로 접속 중입니다. 본인 연차 신청 및 전체 근태 열람이 가능하며, 개인 주소 등 민감 정보는 숨김 처리됩니다.";
         if (hint) hint.innerHTML = `<span class="text-slate-500"><i class="fa-solid fa-lock mr-1"></i>결재 승인/반려는 <strong>지정 관리자(팀장/임원)</strong> 계정 로그인 시 활성화됩니다.</span>`;
         document.querySelectorAll(".admin-col").forEach(el => el.classList.add("hidden"));
       }
@@ -2510,6 +2569,7 @@
       renderWelfareView();
     }
 
+    // 5. 임직원 비상연락망: 주소는 관리자만 볼 수 있도록 분리, 비고는 별도 열로 분리!
     function renderContactsView() {
       const q = (document.getElementById("contactSearchInput").value || "").trim().toLowerCase();
       const showResigned = document.getElementById("contactShowResigned").checked;
@@ -2522,7 +2582,8 @@
             (c.dept || "").toLowerCase().includes(q) ||
             (c.phone || "").toLowerCase().includes(q) ||
             (c.role || "").toLowerCase().includes(q) ||
-            (c.address || "").toLowerCase().includes(q)
+            (c.note || "").toLowerCase().includes(q) ||
+            (state.isAdmin && (c.address || "").toLowerCase().includes(q))
           )
         );
 
@@ -2540,7 +2601,10 @@
           <td class="py-3 px-4 font-mono font-semibold text-blue-600">${c.phone || '-'}</td>
           <td class="py-3 px-4 font-mono text-xs">${c.birth || '-'}</td>
           <td class="py-3 px-4 font-mono text-xs">${c.joinDate || '-'}</td>
-          <td class="py-3 px-4 text-xs text-slate-600">${c.address} ${c.note ? `<span class="ml-1 px-1.5 py-0.5 bg-slate-100 rounded text-slate-700 font-medium">${c.note}</span>` : ''}</td>
+          <td class="py-3 px-4 text-xs text-slate-600 admin-col ${state.isAdmin ? '' : 'hidden'}">${c.address || '-'}</td>
+          <td class="py-3 px-4 text-xs">
+            ${c.note ? `<span class="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-700 font-medium">${c.note}</span>` : '<span class="text-slate-400">-</span>'}
+          </td>
           <td class="py-3 px-4 text-center admin-col ${state.isAdmin ? '' : 'hidden'}">
             <button onclick="openContactModal(${c.realIdx})" class="px-2 py-1 bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-700 rounded text-xs font-semibold mr-1">수정</button>
             <button onclick="deleteContact(${c.realIdx})" class="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded text-xs font-semibold">삭제</button>
@@ -2563,8 +2627,8 @@
         document.getElementById("editContactBirth").value = c.birth;
         document.getElementById("editContactJoin").value = c.joinDate;
         document.getElementById("editContactResign").value = c.resignDate || "";
-        document.getElementById("editContactAddr").value = c.address;
-        document.getElementById("editContactNote").value = c.note;
+        document.getElementById("editContactAddr").value = c.address || "";
+        document.getElementById("editContactNote").value = c.note || "";
       } else {
         document.getElementById("contactModalTitle").textContent = "신규 비상연락처 추가";
         document.getElementById("editContactId").value = "UAN" + String(state.employees.length + 1).padStart(2, "0");
@@ -2704,21 +2768,21 @@
       a.click();
     }
 
-    function toggleEmpExemptDirect(idx) {
-      state.employees[idx].leaveExempt = !state.employees[idx].leaveExempt;
+    function toggleEmpExemptDirect(idx, checkedVal) {
+      state.employees[idx].leaveExempt = Boolean(checkedVal);
       saveState();
       refreshAllViews();
     }
 
-    function toggleEmpAdminRoleDirect(idx) {
+    function toggleEmpAdminRoleDirect(idx, checkedVal) {
       const target = state.employees[idx];
-      if (target.name === state.currentUser && target.isAdminRole) {
+      if (target.name === state.currentUser && !checkedVal) {
         if (!confirm("현재 접속 중인 본인 계정의 관리자 권한을 해제하시겠습니까? (해제 시 일반 직원 모드로 전환됩니다)")) {
           renderAdminEmpView();
           return;
         }
       }
-      target.isAdminRole = !target.isAdminRole;
+      target.isAdminRole = Boolean(checkedVal);
       syncAdminStatusByLoggedUser();
       saveState();
       refreshAllViews();
@@ -2746,13 +2810,13 @@
           <td class="py-2.5 px-3 text-center font-mono text-blue-600 font-bold">${emp.pin || '0000'}</td>
           <td class="py-2.5 px-3 text-center bg-amber-50/50">
             <label class="inline-flex items-center gap-1.5 cursor-pointer">
-              <input type="checkbox" ${emp.isAdminRole ? 'checked' : ''} onchange="toggleEmpAdminRoleDirect(${idx})" class="rounded text-amber-600 w-4 h-4" />
+              <input type="checkbox" ${emp.isAdminRole ? 'checked' : ''} onchange="toggleEmpAdminRoleDirect(${idx}, this.checked)" class="rounded text-amber-600 w-4 h-4" />
               <span class="text-[11px] font-bold ${emp.isAdminRole ? 'text-amber-700' : 'text-slate-400'}">${emp.isAdminRole ? '👑 관리자' : '일반'}</span>
             </label>
           </td>
           <td class="py-2.5 px-3 text-center">
             <label class="inline-flex items-center gap-1 cursor-pointer">
-              <input type="checkbox" ${emp.leaveExempt ? 'checked' : ''} onchange="toggleEmpExemptDirect(${idx})" class="rounded text-slate-600 w-4 h-4" />
+              <input type="checkbox" ${emp.leaveExempt ? 'checked' : ''} onchange="toggleEmpExemptDirect(${idx}, this.checked)" class="rounded text-slate-600 w-4 h-4" />
               <span class="text-[11px] ${emp.leaveExempt ? 'font-bold text-slate-700' : 'text-slate-400'}">${emp.leaveExempt ? '제외' : '대상'}</span>
             </label>
           </td>
@@ -2867,6 +2931,7 @@
     function saveEmpModal(e) {
       e.preventDefault();
       const idx = Number(document.getElementById("editEmpIndex").value);
+      const oldName = idx >= 0 ? state.employees[idx].name : "";
       const empObj = {
         id: document.getElementById("editEmpId").value.trim(),
         name: document.getElementById("editEmpName").value.trim(),
@@ -2875,14 +2940,19 @@
         joinDate: document.getElementById("editEmpJoin").value,
         resignDate: document.getElementById("editEmpResign").value,
         pin: document.getElementById("editEmpPin").value.trim() || "0000",
-        isAdminRole: document.getElementById("editEmpAdminRole").checked,
-        leaveExempt: document.getElementById("editEmpExempt").checked
+        isAdminRole: Boolean(document.getElementById("editEmpAdminRole").checked),
+        leaveExempt: Boolean(document.getElementById("editEmpExempt").checked)
       };
       if (idx >= 0) {
         state.employees[idx] = empObj;
+        if (state.currentUser === oldName) {
+          state.currentUser = empObj.name;
+          sessionStorage.setItem("ym_logged_user_v6", empObj.name);
+        }
       } else {
         state.employees.push(empObj);
       }
+      syncAdminStatusByLoggedUser();
       saveState();
       closeEmpModal();
       refreshAllViews();
